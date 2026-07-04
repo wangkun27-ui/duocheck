@@ -16,12 +16,19 @@ router.use(authMiddleware);
 router.use(adminMiddleware);
 
 // GET /api/admin/stats - get system overview stats (online/total users, active partnerships)
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const activePartnerships = db.prepare("SELECT COUNT(*) as count FROM partnerships WHERE status = 'active'").get().count;
-    const totalGoals = db.prepare('SELECT COUNT(*) as count FROM goals').get().count;
-    const totalCheckins = db.prepare('SELECT COUNT(*) as count FROM checkins').get().count;
+    const totalUsersResult = await db.get('SELECT COUNT(*) as count FROM users');
+    const totalUsers = parseInt(totalUsersResult.count || 0);
+
+    const activePartnershipsResult = await db.get("SELECT COUNT(*) as count FROM partnerships WHERE status = 'active'");
+    const activePartnerships = parseInt(activePartnershipsResult.count || 0);
+
+    const totalGoalsResult = await db.get('SELECT COUNT(*) as count FROM goals');
+    const totalGoals = parseInt(totalGoalsResult.count || 0);
+
+    const totalCheckinsResult = await db.get('SELECT COUNT(*) as count FROM checkins');
+    const totalCheckins = parseInt(totalCheckinsResult.count || 0);
 
     res.json({
       success: true,
@@ -39,9 +46,9 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /api/admin/users - list latest registered users (limit to 30 for speed)
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const users = db.prepare('SELECT id, username, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 30').all();
+    const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 30');
     res.json({ success: true, data: { users } });
   } catch (err) {
     console.error('Admin list users error:', err);
@@ -50,9 +57,9 @@ router.get('/users', (req, res) => {
 });
 
 // GET /api/admin/checkins - list latest checkins (limit to 30 for speed)
-router.get('/checkins', (req, res) => {
+router.get('/checkins', async (req, res) => {
   try {
-    const checkins = db.prepare(`
+    const checkins = await db.all(`
       SELECT c.*, u.username as username, g.title as goal_title, v.username as verified_username
       FROM checkins c
       JOIN users u ON u.id = c.user_id
@@ -60,7 +67,7 @@ router.get('/checkins', (req, res) => {
       LEFT JOIN users v ON v.id = c.verified_by
       ORDER BY c.created_at DESC
       LIMIT 30
-    `).all();
+    `);
 
     const parsed = checkins.map(c => ({
       ...c,
@@ -75,10 +82,10 @@ router.get('/checkins', (req, res) => {
 });
 
 // DELETE /api/admin/checkins/:id - delete a checkin record
-router.delete('/checkins/:id', (req, res) => {
+router.delete('/checkins/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    db.prepare('DELETE FROM checkins WHERE id = ?').run(id);
+    await db.run('DELETE FROM checkins WHERE id = ?', [id]);
     res.json({ success: true, data: { message: '打卡记录已删除' } });
   } catch (err) {
     console.error('Admin delete checkin error:', err);
@@ -87,15 +94,15 @@ router.delete('/checkins/:id', (req, res) => {
 });
 
 // GET /api/admin/goals - list latest goals (limit to 30 for speed)
-router.get('/goals', (req, res) => {
+router.get('/goals', async (req, res) => {
   try {
-    const goals = db.prepare(`
+    const goals = await db.all(`
       SELECT g.*, u.username as username
       FROM goals g
       JOIN users u ON u.id = g.user_id
       ORDER BY g.created_at DESC
       LIMIT 30
-    `).all();
+    `);
     res.json({ success: true, data: { goals } });
   } catch (err) {
     console.error('Admin list goals error:', err);
@@ -104,7 +111,7 @@ router.get('/goals', (req, res) => {
 });
 
 // PUT /api/admin/goals/:id - modify/suspend a goal
-router.put('/goals/:id', (req, res) => {
+router.put('/goals/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, title, description } = req.body;
@@ -120,7 +127,7 @@ router.put('/goals/:id', (req, res) => {
     }
 
     params.push(id);
-    db.prepare(`UPDATE goals SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    await db.run(`UPDATE goals SET ${updates.join(', ')} WHERE id = ?`, params);
     res.json({ success: true, data: { message: '目标更新成功' } });
   } catch (err) {
     console.error('Admin update goal error:', err);

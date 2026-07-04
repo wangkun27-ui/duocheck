@@ -8,14 +8,14 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // GET /api/users/search?q= - search users by username
-router.get('/search', (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.trim().length === 0) {
       return res.json({ success: true, data: { users: [] } });
     }
 
-    const users = db.prepare(`
+    const users = await db.all(`
       SELECT u.id, u.username, u.created_at,
         CASE WHEN EXISTS (
           SELECT 1 FROM partnerships
@@ -24,7 +24,7 @@ router.get('/search', (req, res) => {
       FROM users u
       WHERE u.username LIKE ? AND u.id != ?
       LIMIT 10
-    `).all(`%${q}%`, req.user.id);
+    `, [`%${q}%`, req.user.id]);
 
     res.json({ success: true, data: { users } });
   } catch (err) {
@@ -34,7 +34,7 @@ router.get('/search', (req, res) => {
 });
 
 // POST /api/partners/request - send partner request
-router.post('/request', (req, res) => {
+router.post('/request', async (req, res) => {
   try {
     const { to_user_id } = req.body;
     const fromUserId = req.user.id;
@@ -48,40 +48,43 @@ router.post('/request', (req, res) => {
     }
 
     // Check target user exists
-    const targetUser = db.prepare('SELECT id FROM users WHERE id = ?').get(to_user_id);
+    const targetUser = await db.get('SELECT id FROM users WHERE id = ?', [to_user_id]);
     if (!targetUser) {
       return res.status(404).json({ success: false, error: '目标用户不存在' });
     }
 
     // Check if sender already has an active partnership (one partner at a time)
-    const senderPartnership = db.prepare(
-      'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?'
-    ).get(fromUserId, fromUserId, 'active');
+    const senderPartnership = await db.get(
+      'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?',
+      [fromUserId, fromUserId, 'active']
+    );
     if (senderPartnership) {
       return res.status(400).json({ success: false, error: '你已经有搭档了' });
     }
 
     // Check if target already has an active partnership
-    const targetPartnership = db.prepare(
-      'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?'
-    ).get(to_user_id, to_user_id, 'active');
+    const targetPartnership = await db.get(
+      'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?',
+      [to_user_id, to_user_id, 'active']
+    );
     if (targetPartnership) {
       return res.status(400).json({ success: false, error: '对方已经有搭档了' });
     }
 
     // Check no existing pending request between these two users (either direction)
-    const existingRequest = db.prepare(`
+    const existingRequest = await db.get(`
       SELECT id FROM partner_requests
       WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))
         AND status = 'pending'
-    `).get(fromUserId, to_user_id, to_user_id, fromUserId);
+    `, [fromUserId, to_user_id, to_user_id, fromUserId]);
     if (existingRequest) {
       return res.status(400).json({ success: false, error: '已存在待处理的搭档请求' });
     }
 
-    const result = db.prepare(
-      'INSERT INTO partner_requests (from_user_id, to_user_id) VALUES (?, ?)'
-    ).run(fromUserId, to_user_id);
+    const result = await db.run(
+      'INSERT INTO partner_requests (from_user_id, to_user_id) VALUES (?, ?)',
+      [fromUserId, to_user_id]
+    );
 
     res.status(201).json({
       success: true,
@@ -94,15 +97,15 @@ router.post('/request', (req, res) => {
 });
 
 // GET /api/partners/requests - get pending requests received
-router.get('/requests', (req, res) => {
+router.get('/requests', async (req, res) => {
   try {
-    const requests = db.prepare(`
+    const requests = await db.all(`
       SELECT pr.*, u.username as from_username
       FROM partner_requests pr
       JOIN users u ON u.id = pr.from_user_id
       WHERE pr.to_user_id = ? AND pr.status = 'pending'
       ORDER BY pr.created_at DESC
-    `).all(req.user.id);
+    `, [req.user.id]);
 
     res.json({ success: true, data: { requests } });
   } catch (err) {
@@ -112,7 +115,7 @@ router.get('/requests', (req, res) => {
 });
 
 // PUT /api/partners/requests/:id - accept or reject
-router.put('/requests/:id', (req, res) => {
+router.put('/requests/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body; // 'accept' or 'reject'
@@ -121,9 +124,10 @@ router.put('/requests/:id', (req, res) => {
       return res.status(400).json({ success: false, error: '操作无效，请选择接受或拒绝' });
     }
 
-    const request = db.prepare(
-      'SELECT * FROM partner_requests WHERE id = ? AND to_user_id = ? AND status = ?'
-    ).get(id, req.user.id, 'pending');
+    const request = await db.get(
+      'SELECT * FROM partner_requests WHERE id = ? AND to_user_id = ? AND status = ?',
+      [id, req.user.id, 'pending']
+    );
 
     if (!request) {
       return res.status(404).json({ success: false, error: '搭档请求不存在或已处理' });
@@ -131,47 +135,49 @@ router.put('/requests/:id', (req, res) => {
 
     if (action === 'accept') {
       // Check neither user already has an active partnership
-      const senderPartnership = db.prepare(
-        'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?'
-      ).get(request.from_user_id, request.from_user_id, 'active');
+      const senderPartnership = await db.get(
+        'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?',
+        [request.from_user_id, request.from_user_id, 'active']
+      );
       if (senderPartnership) {
         // Auto-reject since the sender already found a partner
-        db.prepare('UPDATE partner_requests SET status = ? WHERE id = ?').run('rejected', id);
+        await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', id]);
         return res.status(400).json({ success: false, error: '对方已经有搭档了' });
       }
 
-      const receiverPartnership = db.prepare(
-        'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?'
-      ).get(req.user.id, req.user.id, 'active');
+      const receiverPartnership = await db.get(
+        'SELECT id FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?',
+        [req.user.id, req.user.id, 'active']
+      );
       if (receiverPartnership) {
         return res.status(400).json({ success: false, error: '你已经有搭档了' });
       }
 
       // Use transaction to accept request and create partnership
-      const acceptTransaction = db.transaction(() => {
-        db.prepare('UPDATE partner_requests SET status = ? WHERE id = ?').run('accepted', id);
-        const result = db.prepare(
-          'INSERT INTO partnerships (user1_id, user2_id) VALUES (?, ?)'
-        ).run(request.from_user_id, req.user.id);
+      const partnershipId = await db.transaction(async (tx) => {
+        await tx.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['accepted', id]);
+        const result = await tx.run(
+          'INSERT INTO partnerships (user1_id, user2_id) VALUES (?, ?)',
+          [request.from_user_id, req.user.id]
+        );
 
         // Auto-reject all other pending requests for both users
-        db.prepare(`
+        await tx.run(`
           UPDATE partner_requests SET status = 'rejected'
           WHERE status = 'pending'
             AND (from_user_id IN (?, ?) OR to_user_id IN (?, ?))
             AND id != ?
-        `).run(request.from_user_id, req.user.id, request.from_user_id, req.user.id, id);
+        `, [request.from_user_id, req.user.id, request.from_user_id, req.user.id, id]);
 
         return result.lastInsertRowid;
       });
 
-      const partnershipId = acceptTransaction();
       res.json({
         success: true,
         data: { partnership_id: partnershipId }
       });
     } else {
-      db.prepare('UPDATE partner_requests SET status = ? WHERE id = ?').run('rejected', id);
+      await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', id]);
       res.json({ success: true, data: { message: '已拒绝搭档请求' } });
     }
   } catch (err) {
@@ -181,12 +187,12 @@ router.put('/requests/:id', (req, res) => {
 });
 
 // GET /api/partners/ - list active partnerships with partner info
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().split('T')[0];
 
-    const partnerships = db.prepare(`
+    const partnerships = await db.all(`
       SELECT p.*,
         CASE WHEN p.user1_id = ? THEN p.user2_id ELSE p.user1_id END as partner_id,
         CASE WHEN p.user1_id = ? THEN u2.username ELSE u1.username END as partner_username
@@ -194,10 +200,10 @@ router.get('/', (req, res) => {
       JOIN users u1 ON u1.id = p.user1_id
       JOIN users u2 ON u2.id = p.user2_id
       WHERE (p.user1_id = ? OR p.user2_id = ?) AND p.status = 'active'
-    `).all(userId, userId, userId, userId);
+    `, [userId, userId, userId, userId]);
 
     // Enrich with partner's streak and today's checkin status for their goals
-    const enriched = partnerships.map(p => {
+    const enriched = await Promise.all(partnerships.map(async p => {
       const partnerId = p.partner_id;
 
       // Calculate partner's streak
@@ -205,10 +211,11 @@ router.get('/', (req, res) => {
       const checkDate = new Date(today);
       while (true) {
         const dateStr = checkDate.toISOString().split('T')[0];
-        const hasCheckin = db.prepare(
-          'SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND date = ?'
-        ).get(partnerId, dateStr);
-        if (hasCheckin.count > 0) {
+        const hasCheckin = await db.get(
+          'SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND date = ?',
+          [partnerId, dateStr]
+        );
+        if (parseInt(hasCheckin.count || 0) > 0) {
           streak++;
           checkDate.setDate(checkDate.getDate() - 1);
         } else {
@@ -217,20 +224,22 @@ router.get('/', (req, res) => {
       }
 
       // Partner's active goals with today's checkin status
-      const goals = db.prepare(
-        'SELECT * FROM goals WHERE user_id = ? AND status = ?'
-      ).all(partnerId, 'active');
+      const goals = await db.all(
+        'SELECT * FROM goals WHERE user_id = ? AND status = ?',
+        [partnerId, 'active']
+      );
 
-      const goalsWithCheckins = goals.map(g => {
-        const todayCheckin = db.prepare(
-          'SELECT * FROM checkins WHERE goal_id = ? AND date = ?'
-        ).get(g.id, today);
+      const goalsWithCheckins = await Promise.all(goals.map(async g => {
+        const todayCheckin = await db.get(
+          'SELECT * FROM checkins WHERE goal_id = ? AND date = ?',
+          [g.id, today]
+        );
         return {
           ...g,
           today_checked_in: !!todayCheckin,
           today_checkin: todayCheckin || null
         };
-      });
+      }));
 
       return {
         ...p,
@@ -239,7 +248,7 @@ router.get('/', (req, res) => {
         partner_goals: goalsWithCheckins,
         today_checkins: goalsWithCheckins.filter(g => g.today_checked_in).length // Add this helper
       };
-    });
+    }));
 
     res.json({ success: true, data: { partners: enriched } });
   } catch (err) {
@@ -249,22 +258,24 @@ router.get('/', (req, res) => {
 });
 
 // DELETE /api/partners/:id - manually dissolve partnership
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const partnership = db.prepare(
-      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?) AND status = ?'
-    ).get(id, userId, userId, 'active');
+    const partnership = await db.get(
+      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?) AND status = ?',
+      [id, userId, userId, 'active']
+    );
 
     if (!partnership) {
       return res.status(404).json({ success: false, error: '搭档关系不存在或已解散' });
     }
 
-    db.prepare(
-      'UPDATE partnerships SET status = ?, dissolved_reason = ?, dissolved_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).run('dissolved', 'manual', id);
+    await db.run(
+      'UPDATE partnerships SET status = ?, dissolved_reason = ?, dissolved_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['dissolved', 'manual', id]
+    );
 
     res.json({ success: true, data: { message: '搭档关系已解散' } });
   } catch (err) {

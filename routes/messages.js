@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // POST /api/messages/:partnershipId - send message
-router.post('/:partnershipId', (req, res) => {
+router.post('/:partnershipId', async (req, res) => {
   try {
     const { partnershipId } = req.params;
     const { content } = req.body;
@@ -19,24 +19,26 @@ router.post('/:partnershipId', (req, res) => {
     }
 
     // Verify user is part of partnership
-    const partnership = db.prepare(
-      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)'
-    ).get(partnershipId, userId, userId);
+    const partnership = await db.get(
+      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+      [partnershipId, userId, userId]
+    );
 
     if (!partnership) {
       return res.status(403).json({ success: false, error: '你不属于该搭档关系' });
     }
 
-    const result = db.prepare(
-      'INSERT INTO messages (partnership_id, sender_id, content) VALUES (?, ?, ?)'
-    ).run(partnershipId, userId, content.trim());
+    const result = await db.run(
+      'INSERT INTO messages (partnership_id, sender_id, content) VALUES (?, ?, ?)',
+      [partnershipId, userId, content.trim()]
+    );
 
-    const message = db.prepare(`
+    const message = await db.get(`
       SELECT m.*, u.username as sender_username
       FROM messages m
       JOIN users u ON u.id = m.sender_id
       WHERE m.id = ?
-    `).get(result.lastInsertRowid);
+    `, [result.lastInsertRowid]);
 
     res.status(201).json({ success: true, data: message });
   } catch (err) {
@@ -46,27 +48,28 @@ router.post('/:partnershipId', (req, res) => {
 });
 
 // GET /api/messages/:partnershipId - get messages for partnership
-router.get('/:partnershipId', (req, res) => {
+router.get('/:partnershipId', async (req, res) => {
   try {
     const { partnershipId } = req.params;
     const userId = req.user.id;
 
     // Verify user is part of partnership
-    const partnership = db.prepare(
-      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)'
-    ).get(partnershipId, userId, userId);
+    const partnership = await db.get(
+      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+      [partnershipId, userId, userId]
+    );
 
     if (!partnership) {
       return res.status(403).json({ success: false, error: '你不属于该搭档关系' });
     }
 
-    const messages = db.prepare(`
+    const messages = await db.all(`
       SELECT m.*, u.username as sender_username
       FROM messages m
       JOIN users u ON u.id = m.sender_id
       WHERE m.partnership_id = ?
       ORDER BY m.created_at ASC
-    `).all(partnershipId);
+    `, [partnershipId]);
 
     res.json({ success: true, data: { messages } });
   } catch (err) {

@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // POST /api/goals/ - create goal for self
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { title, description } = req.body;
 
@@ -16,11 +16,12 @@ router.post('/', (req, res) => {
       return res.status(400).json({ success: false, error: '请输入目标标题' });
     }
 
-    const result = db.prepare(
-      'INSERT INTO goals (user_id, title, description) VALUES (?, ?, ?)'
-    ).run(req.user.id, title.trim(), description || null);
+    const result = await db.run(
+      'INSERT INTO goals (user_id, title, description) VALUES (?, ?, ?)',
+      [req.user.id, title.trim(), description || null]
+    );
 
-    const goal = db.prepare('SELECT * FROM goals WHERE id = ?').get(result.lastInsertRowid);
+    const goal = await db.get('SELECT * FROM goals WHERE id = ?', [result.lastInsertRowid]);
 
     res.status(201).json({ success: true, data: goal });
   } catch (err) {
@@ -30,7 +31,7 @@ router.post('/', (req, res) => {
 });
 
 // GET /api/goals/ - get own goals
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { status } = req.query;
     let query = 'SELECT * FROM goals WHERE user_id = ?';
@@ -43,7 +44,7 @@ router.get('/', (req, res) => {
 
     query += ' ORDER BY created_at DESC';
 
-    const goals = db.prepare(query).all(...params);
+    const goals = await db.all(query, params);
     res.json({ success: true, data: { goals } });
   } catch (err) {
     console.error('Get goals error:', err);
@@ -52,25 +53,26 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/goals/partner/:userId - get a partner's active goals
-router.get('/partner/:userId', (req, res) => {
+router.get('/partner/:userId', async (req, res) => {
   try {
     const partnerId = parseInt(req.params.userId);
     const userId = req.user.id;
 
     // Verify they are partners
-    const partnership = db.prepare(`
+    const partnership = await db.get(`
       SELECT id FROM partnerships
       WHERE ((user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?))
         AND status = 'active'
-    `).get(userId, partnerId, partnerId, userId);
+    `, [userId, partnerId, partnerId, userId]);
 
     if (!partnership) {
       return res.status(403).json({ success: false, error: '你们不是搭档关系' });
     }
 
-    const goals = db.prepare(
-      'SELECT * FROM goals WHERE user_id = ? AND status = ? ORDER BY created_at DESC'
-    ).all(partnerId, 'active');
+    const goals = await db.all(
+      'SELECT * FROM goals WHERE user_id = ? AND status = ? ORDER BY created_at DESC',
+      [partnerId, 'active']
+    );
 
     res.json({ success: true, data: { goals } });
   } catch (err) {
@@ -80,12 +82,12 @@ router.get('/partner/:userId', (req, res) => {
 });
 
 // PUT /api/goals/:id - update own goal
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, status } = req.body;
 
-    const goal = db.prepare('SELECT * FROM goals WHERE id = ? AND user_id = ?').get(id, req.user.id);
+    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [id, req.user.id]);
     if (!goal) {
       return res.status(404).json({ success: false, error: '目标不存在或无权修改' });
     }
@@ -107,9 +109,9 @@ router.put('/:id', (req, res) => {
     const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
     const values = Object.values(updates);
 
-    db.prepare(`UPDATE goals SET ${setClauses} WHERE id = ?`).run(...values, id);
+    await db.run(`UPDATE goals SET ${setClauses} WHERE id = ?`, [...values, id]);
 
-    const updated = db.prepare('SELECT * FROM goals WHERE id = ?').get(id);
+    const updated = await db.get('SELECT * FROM goals WHERE id = ?', [id]);
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error('Update goal error:', err);

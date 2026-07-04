@@ -7,7 +7,7 @@ const { authMiddleware, JWT_SECRET } = require('../middleware/auth');
 const router = express.Router();
 
 // POST /api/auth/register
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -28,7 +28,7 @@ router.post('/register', (req, res) => {
     }
 
     // Check if username already exists
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    const existing = await db.get('SELECT id FROM users WHERE username = ?', [username]);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -38,7 +38,7 @@ router.post('/register', (req, res) => {
 
     // Hash password and insert user
     const passwordHash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, passwordHash);
+    const result = await db.run('INSERT INTO users (username, password_hash) VALUES (?, ?)', [username, passwordHash]);
 
     const token = jwt.sign(
       { id: result.lastInsertRowid, username, is_admin: 0 },
@@ -60,18 +60,18 @@ router.post('/register', (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        error: '请提供用户名和密码'
+        error: '请提供用户名 and 密码'
       });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -107,20 +107,21 @@ router.post('/login', (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', authMiddleware, (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = db.prepare('SELECT id, username, is_admin, created_at FROM users WHERE id = ?').get(userId);
+    const user = await db.get('SELECT id, username, is_admin, created_at FROM users WHERE id = ?', [userId]);
     if (!user) {
       return res.status(404).json({ success: false, error: '用户不存在' });
     }
 
     // Total checkins
-    const totalCheckins = db.prepare('SELECT COUNT(*) as count FROM checkins WHERE user_id = ?').get(userId).count;
+    const checkinCountResult = await db.get('SELECT COUNT(*) as count FROM checkins WHERE user_id = ?', [userId]);
+    const totalCheckins = parseInt(checkinCountResult.count || 0);
 
     // Calculate streak efficiently in-memory to reduce database queries
-    const checkinDatesList = db.prepare('SELECT DISTINCT date FROM checkins WHERE user_id = ? ORDER BY date DESC').all(userId);
+    const checkinDatesList = await db.all('SELECT DISTINCT date FROM checkins WHERE user_id = ? ORDER BY date DESC', [userId]);
     const checkinDates = new Set(checkinDatesList.map(c => c.date));
     let streak = 0;
     const today = new Date().toISOString().split('T')[0];
@@ -142,14 +143,18 @@ router.get('/me', authMiddleware, (req, res) => {
     }
 
     // Active goals count
-    const activeGoals = db.prepare(
-      'SELECT COUNT(*) as count FROM goals WHERE user_id = ? AND status = ?'
-    ).get(userId, 'active').count;
+    const activeGoalsResult = await db.get(
+      'SELECT COUNT(*) as count FROM goals WHERE user_id = ? AND status = ?',
+      [userId, 'active']
+    );
+    const activeGoals = parseInt(activeGoalsResult.count || 0);
 
     // Partner count (active partnerships)
-    const partnerCount = db.prepare(
-      'SELECT COUNT(*) as count FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?'
-    ).get(userId, userId, 'active').count;
+    const partnerCountResult = await db.get(
+      'SELECT COUNT(*) as count FROM partnerships WHERE (user1_id = ? OR user2_id = ?) AND status = ?',
+      [userId, userId, 'active']
+    );
+    const partnerCount = parseInt(partnerCountResult.count || 0);
 
     res.json({
       success: true,
