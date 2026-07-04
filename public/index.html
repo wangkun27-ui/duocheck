@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuoCheck - 搭档打卡互监督</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Navigation Bar (hidden when not logged in) -->
+  <nav id="main-nav" class="nav-bar hidden">
+    <div class="logo">DuoCheck 🔥</div>
+    <ul class="nav-links">
+      <li><a data-page="dashboard" class="active">📊 仪表盘</a></li>
+      <li><a data-page="goals">🎯 我的目标</a></li>
+      <li><a data-page="partners">🤝 搭档</a></li>
+      <li><a data-page="checkin">✅ 打卡</a></li>
+    </ul>
+    <div class="nav-user">
+      <span id="user-display"></span>
+      <button class="btn btn-ghost btn-sm" id="logout-btn">退出</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div id="app"></div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay"></div>
+
+  <!-- Scripts (loaded in order) -->
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/partners.js"></script>
+  <script src="js/checkin.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
