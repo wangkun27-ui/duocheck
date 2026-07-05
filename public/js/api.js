@@ -49,6 +49,7 @@ window.API = {
     list: () => API.request('GET', '/api/goals'),
     partnerGoals: (userId) => API.request('GET', `/api/goals/partner/${userId}`),
     update: (id, data) => API.request('PUT', `/api/goals/${id}`, data),
+    delete: (id) => API.request('DELETE', `/api/goals/${id}`),
   },
   checkins: {
     create: (formData) => API.request('POST', '/api/checkins', formData, true),

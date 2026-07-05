@@ -119,4 +119,31 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/goals/:id - delete own goal (completely remove goal and its checkins)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verify goal exists and belongs to user
+    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [id, userId]);
+    if (!goal) {
+      return res.status(404).json({ success: false, error: '目标不存在或无权删除' });
+    }
+
+    // Use a transaction to delete goal and its related checkins
+    await db.transaction(async (tx) => {
+      // 1. Delete all checkins associated with this goal
+      await tx.run('DELETE FROM checkins WHERE goal_id = ?', [id]);
+      // 2. Delete the goal itself
+      await tx.run('DELETE FROM goals WHERE id = ?', [id]);
+    });
+
+    res.json({ success: true, data: { message: '目标及打卡记录已彻底删除' } });
+  } catch (err) {
+    console.error('Delete goal error:', err);
+    res.status(500).json({ success: false, error: '删除目标失败' });
+  }
+});
+
 module.exports = router;

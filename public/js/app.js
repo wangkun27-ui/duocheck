@@ -296,6 +296,7 @@ window.GoalsPage = {
                     <button class="btn btn-danger btn-sm btn-cancel-goal" data-id="${goal.id}" data-title="${goal.title}">❌ 取消</button>
                   ` : `
                     <button class="btn btn-ghost btn-sm btn-resume-goal" data-id="${goal.id}">🔄 恢复</button>
+                    <button class="btn btn-danger btn-sm btn-delete-goal" data-id="${goal.id}" data-title="${goal.title}">🗑️ 彻底删除</button>
                   `}
                 </div>
               </div>
@@ -327,6 +328,10 @@ window.GoalsPage = {
       // 取消目标按钮
       document.querySelectorAll('.btn-cancel-goal').forEach(btn => {
         btn.addEventListener('click', () => this.cancelGoal(btn.dataset.id, btn.dataset.title));
+      });
+      // 彻底删除目标按钮
+      document.querySelectorAll('.btn-delete-goal').forEach(btn => {
+        btn.addEventListener('click', () => this.deleteGoal(btn.dataset.id, btn.dataset.title));
       });
     };
 
@@ -419,6 +424,25 @@ window.GoalsPage = {
       try {
         await API.goals.update(id, { status: 'abandoned' });
         App.showToast('目标已取消', 'success');
+        this.cache = null;
+        this.render();
+        return true;
+      } catch (err) {
+        App.showToast(err.message, 'error');
+        return false;
+      }
+    });
+  },
+
+  deleteGoal(id, title) {
+    App.showModal('🗑️ 彻底删除目标', `
+      <p style="color:#ef4444; font-weight: 600;">⚠️ 警告：该操作不可逆！</p>
+      <p style="color:#f1f5f9">确定要彻底删除目标 <strong>「${title}」</strong> 吗？</p>
+      <p style="color:#94a3b8;font-size:0.9em">此操作将永久清除该目标及其所有的打卡和监督记录！</p>
+    `, async () => {
+      try {
+        await API.goals.delete(id);
+        App.showToast('目标已被永久删除', 'success');
         this.cache = null;
         this.render();
         return true;
