@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/auth/auth",
+    "pages/dashboard/dashboard",
+    "pages/goals/goals",
+    "pages/partners/partners",
+    "pages/checkin/checkin",
+    "pages/messages/messages",
+    "pages/admin/admin"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#0a0a1a",
+    "navigationBarTitleText": "DuoCheck 🔥",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0a0a1a"
+  },
+  "sitemapLocation": "sitemap.json"
+}

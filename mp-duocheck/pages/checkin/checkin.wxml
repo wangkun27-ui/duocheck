@@ -1,0 +1,93 @@
+<view class="container">
+  <!-- Mode 1: Self Check-in -->
+  <view wx:if="{{mode === 'checkin'}}">
+    <text class="page-title">✅ 每日打卡</text>
+    <view class="empty-state" wx:if="{{goals.length === 0}}">
+      <text class="empty-text">今天没有活跃目标，请先去设定一个吧！</text>
+    </view>
+    <view class="goal-checkin-card glass-card" wx:for="{{goals}}" wx:key="id">
+      <text class="goal-title">🎯 {{item.title}}</text>
+      <text class="goal-desc">{{item.description || '暂无描述'}}</text>
+
+      <!-- If already checked in today -->
+      <view class="checked-in-state" wx:if="{{item.checked_in}}">
+        <text class="badge badge-success">今日已打卡</text>
+        <view class="checkin-detail" wx:if="{{item.checkin}}">
+          <text class="checkin-note" wx:if="{{item.checkin.note}}">💬 {{item.checkin.note}}</text>
+          <view class="photo-grid" wx:if="{{item.checkin.images && item.checkin.images.length > 0}}">
+            <image class="photo-img" wx:for="{{item.checkin.images}}" wx:for-item="img" wx:key="*this" src="{{img}}" mode="aspectFill" bindtap="previewImage" data-urls="{{item.checkin.images}}" data-current="{{img}}" />
+          </view>
+          
+          <!-- Verification outcome -->
+          <view class="verify-status" wx:if="{{item.checkin.verified_status}}">
+            <text class="badge {{item.checkin.verified_status === 'confirmed' ? 'badge-success' : 'badge-danger'}}">
+              搭档意见：{{item.checkin.verified_status === 'confirmed' ? '✅ 真实有效' : '❌ 存在质疑'}}
+            </text>
+            <text class="verify-comment" wx:if="{{item.checkin.verify_comment}}">监督意见: {{item.checkin.verify_comment}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- If unchecked -->
+      <view class="uncheck-state" wx:else>
+        <!-- Form upload note -->
+        <textarea class="form-input text-area-input" placeholder="输入今日感悟或打卡说明..." placeholder-class="form-input-placeholder" bindinput="onInputNote" data-id="{{item.id}}" value="{{notes[item.id] || ''}}" />
+        
+        <!-- Image select/preview list -->
+        <view class="image-uploader">
+          <view class="uploader-grid">
+            <view class="uploader-preview" wx:for="{{tempImages[item.id]}}" wx:key="*this" wx:for-item="imgPath">
+              <image class="preview-img" src="{{imgPath}}" mode="aspectFill" />
+              <view class="delete-btn" bindtap="removeImage" data-goal-id="{{item.id}}" data-img-index="{{index}}">×</view>
+            </view>
+            <view class="uploader-action" wx:if="{{(!tempImages[item.id] || tempImages[item.id].length < 3)}}" bindtap="chooseImages" data-id="{{item.id}}">
+              <text class="uploader-icon">+</text>
+              <text class="uploader-text">最多3张</text>
+            </view>
+          </view>
+        </view>
+
+        <button class="btn-primary submit-checkin-btn" bindtap="submitCheckin" data-id="{{item.id}}">提交打卡证明</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- Mode 2: Partner Review/Supervise -->
+  <view wx:if="{{mode === 'review'}}">
+    <text class="page-title">👀 监督搭档今日动态</text>
+    <view class="empty-state" wx:if="{{partnerGoals.length === 0}}">
+      <text class="empty-text">搭档今天还没有进行任何目标打卡。</text>
+    </view>
+    <view class="goal-checkin-card glass-card" wx:for="{{partnerGoals}}" wx:key="id">
+      <text class="goal-title">🎯 {{item.goal_title || item.title}}</text>
+      
+      <view class="checked-in-state" wx:if="{{item.checked_in && item.checkin}}">
+        <text class="badge badge-success">今日已打卡</text>
+        <text class="checkin-note" wx:if="{{item.checkin.note}}">💬 {{item.checkin.note}}</text>
+        <view class="photo-grid" wx:if="{{item.checkin.images && item.checkin.images.length > 0}}">
+          <image class="photo-img" wx:for="{{item.checkin.images}}" wx:for-item="img" wx:key="*this" src="{{img}}" mode="aspectFill" bindtap="previewImage" data-urls="{{item.checkin.images}}" data-current="{{img}}" />
+        </view>
+
+        <!-- Verify action fields -->
+        <view class="verify-action-box" wx:if="{{!item.checkin.verified_status}}">
+          <input class="form-input verify-input" placeholder="输入监督评语（选填）" placeholder-class="form-input-placeholder" bindinput="onInputComment" data-checkin-id="{{item.checkin.id}}" value="{{verifyComments[item.checkin.id] || ''}}" />
+          <view class="verify-btns">
+            <button class="badge badge-success verify-btn" bindtap="verifyCheckin" data-id="{{item.checkin.id}}" data-status="confirmed">✅ 真实有效</button>
+            <button class="badge badge-danger verify-btn" bindtap="verifyCheckin" data-id="{{item.checkin.id}}" data-status="questioned">❌ 提出质疑</button>
+          </view>
+        </view>
+
+        <view class="verify-status" wx:else>
+          <text class="badge {{item.checkin.verified_status === 'confirmed' ? 'badge-success' : 'badge-danger'}}">
+            我的判定：{{item.checkin.verified_status === 'confirmed' ? '✅ 真实有效' : '❌ 存在质疑'}}
+          </text>
+          <text class="verify-comment" wx:if="{{item.checkin.verify_comment}}">我的评语: {{item.checkin.verify_comment}}</text>
+        </view>
+      </view>
+
+      <view class="uncheck-state" wx:else>
+        <text class="badge badge-secondary">搭档今日尚未打卡</text>
+      </view>
+    </view>
+  </view>
+</view>

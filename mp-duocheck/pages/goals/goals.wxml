@@ -1,0 +1,46 @@
+<view class="container">
+  <view class="flex-between header-section">
+    <text class="page-title">🎯 我的目标</text>
+    <button class="btn-primary add-btn" bindtap="showAddModal">+ 新增目标</button>
+  </view>
+
+  <view class="goals-list">
+    <view class="empty-state" wx:if="{{goals.length === 0}}">
+      <text class="empty-text">还没有设定任何目标，赶紧加一个吧！</text>
+    </view>
+    <view class="goal-card glass-card" wx:for="{{goals}}" wx:key="id">
+      <view class="goal-info">
+        <text class="goal-title">{{item.title}}</text>
+        <text class="goal-desc">{{item.description || '暂无描述'}}</text>
+        <view class="badge-row">
+          <text class="badge {{item.status === 'active' ? 'badge-success' : 'badge-secondary'}}">
+            {{item.status === 'active' ? '进行中' : '已暂停'}}
+          </text>
+        </view>
+      </view>
+
+      <view class="goal-actions">
+        <button class="action-btn btn-ghost" bindtap="showEditModal" data-item="{{item}}">✏️ 编辑</button>
+        <button class="action-btn btn-ghost" bindtap="toggleStatus" data-id="{{item.id}}" data-status="{{item.status}}">
+          {{item.status === 'active' ? '⏸️ 暂停' : '▶️ 恢复'}}
+        </button>
+        <button class="action-btn btn-danger-ghost" bindtap="deleteGoal" data-id="{{item.id}}">🗑️ 删除</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- Add/Edit Modal (Standard overlay simulation) -->
+  <view class="modal-overlay {{showModal ? 'active' : ''}}">
+    <view class="modal-content glass-card">
+      <view class="modal-header">
+        <text class="modal-title">{{modalType === 'add' ? '🎯 新增目标' : '✏️ 编辑目标'}}</text>
+      </view>
+      <input class="form-input" placeholder="请输入目标名称" placeholder-class="form-input-placeholder" bindinput="onInputTitle" value="{{goalTitle}}" />
+      <textarea class="form-input text-area-input" placeholder="请输入描述（选填）" placeholder-class="form-input-placeholder" bindinput="onInputDesc" value="{{goalDesc}}" />
+      <view class="modal-actions">
+        <button class="modal-btn btn-cancel" bindtap="closeModal">取消</button>
+        <button class="modal-btn btn-confirm" bindtap="saveGoal">确认</button>
+      </view>
+    </view>
+  </view>
+</view>

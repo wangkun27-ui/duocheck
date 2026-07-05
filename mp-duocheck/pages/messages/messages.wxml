@@ -1,0 +1,16 @@
+<view class="container">
+  <scroll-view class="chat-scroll" scroll-y scroll-top="{{scrollTop}}" scroll-into-view="{{lastMessageId}}" scroll-with-animation>
+    <view class="message-bubble-wrapper {{item.sender_id === currentUserId ? 'sent' : 'received'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <text class="sender-name" wx:if="{{item.sender_id !== currentUserId}}">{{item.sender_username}}</text>
+      <view class="chat-bubble">
+        <text class="chat-text">{{item.content}}</text>
+        <text class="chat-time">{{item.timeFormatted}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="chat-input-bar">
+    <input class="form-input chat-input" placeholder="留条言，给 TA 鼓个劲吧..." placeholder-class="form-input-placeholder" bindinput="onInputContent" value="{{inputContent}}" confirm-type="send" bindconfirm="sendMessage" />
+    <button class="btn-primary send-btn" bindtap="sendMessage">发送</button>
+  </view>
+</view>

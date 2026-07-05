@@ -1,0 +1,64 @@
+<view class="container">
+  <!-- Welcome fire streak area -->
+  <view class="welcome-section glass-card">
+    <view class="welcome-header">
+      <view>
+        <text class="welcome-title">欢迎回来, {{user.username}}</text>
+        <view class="streak-badge" wx:if="{{streak > 0}}">
+          <text class="streak-fire">🔥 连续打卡 {{streak}} 天</text>
+        </view>
+      </view>
+      <button class="logout-btn" bindtap="logout">退出</button>
+    </view>
+  </view>
+
+  <!-- Quick Actions navigation bar -->
+  <view class="actions-grid">
+    <view class="action-card glass-card" bindtap="gotoPage" data-page="goals">
+      <text class="action-icon">🎯</text>
+      <text class="action-name">我的目标</text>
+    </view>
+    <view class="action-card glass-card" bindtap="gotoPage" data-page="partners">
+      <text class="action-icon">👥</text>
+      <text class="action-name">监督搭档</text>
+    </view>
+    <view class="action-card glass-card" bindtap="gotoPage" data-page="checkin">
+      <text class="action-icon">✅</text>
+      <text class="action-name">去打卡</text>
+    </view>
+    <view class="action-card glass-card" wx:if="{{user.is_admin === 1}}" bindtap="gotoPage" data-page="admin">
+      <text class="action-icon">🛡️</text>
+      <text class="action-name">管理后台</text>
+    </view>
+  </view>
+
+  <!-- Today's goals list -->
+  <view class="section">
+    <text class="section-title">🎯 今日目标打卡进度</text>
+    <view class="goals-list">
+      <view class="empty-state" wx:if="{{todayGoals.length === 0}}">
+        <text class="empty-text">今天还没有添加任何活跃目标</text>
+        <button class="btn-primary mt-2" bindtap="gotoPage" data-page="goals">+ 设定目标</button>
+      </view>
+      <view class="goal-item glass-card" wx:for="{{todayGoals}}" wx:key="id">
+        <view class="goal-info">
+          <text class="goal-title">{{item.title}}</text>
+          <text class="goal-desc">{{item.description || '暂无描述'}}</text>
+        </view>
+        <view class="goal-status">
+          <text class="badge badge-success" wx:if="{{item.checked_in}}">已打卡</text>
+          <button class="badge badge-secondary checkin-btn" wx:else bindtap="quickCheckin" data-id="{{item.id}}">去打卡</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Dissolved partnership alert banner -->
+  <view class="dissolve-alert glass-card" wx:if="{{dissolvedPartnerships.length > 0}}" wx:for="{{dissolvedPartnerships}}" wx:key="id">
+    <text class="alert-icon">⚠️</text>
+    <view class="alert-content">
+      <text class="alert-title">搭档关系已解除</text>
+      <text class="alert-desc">由于您或搭档 「{{item.partner_username}}」 昨日未打卡，双方搭档关系已自动解散。</text>
+    </view>
+  </view>
+</view>

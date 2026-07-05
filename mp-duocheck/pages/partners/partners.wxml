@@ -1,0 +1,50 @@
+<view class="container">
+  <!-- Search section -->
+  <view class="section">
+    <text class="section-title">🔍 搜索用户添加搭档</text>
+    <view class="search-box">
+      <input class="form-input search-input" placeholder="输入用户名搜索..." placeholder-class="form-input-placeholder" bindinput="onInputSearch" value="{{searchQuery}}" />
+      <button class="btn-primary search-btn" bindtap="handleSearch">搜索</button>
+    </view>
+    <view class="search-results" wx:if="{{searchResults.length > 0}}">
+      <view class="search-item glass-card" wx:for="{{searchResults}}" wx:key="id">
+        <text class="user-name">👤 {{item.username}}</text>
+        <button class="btn-primary invite-btn" wx:if="{{item.has_partner === 0}}" bindtap="sendRequest" data-id="{{item.id}}">邀请</button>
+        <text class="badge badge-secondary" wx:else>已有搭档</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- Incoming Requests received -->
+  <view class="section" wx:if="{{pendingRequests.length > 0}}">
+    <text class="section-title">📨 待处理的邀请</text>
+    <view class="request-card glass-card" wx:for="{{pendingRequests}}" wx:key="id">
+      <text class="request-user">👤 {{item.from_username || item.username}} 邀请你成为打卡搭档</text>
+      <view class="request-actions">
+        <button class="badge badge-success request-btn" bindtap="respondRequest" data-id="{{item.id}}" data-action="accept">接受</button>
+        <button class="badge badge-danger request-btn" bindtap="respondRequest" data-id="{{item.id}}" data-action="reject">拒绝</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- Current active partners -->
+  <view class="section">
+    <text class="section-title">👥 我的搭档</text>
+    <view class="partners-list">
+      <view class="empty-state" wx:if="{{partners.length === 0}}">
+        <text class="empty-text">还没有搭档，在上方搜索一个用户邀请搭档吧！</text>
+      </view>
+      <view class="partner-card glass-card" wx:for="{{partners}}" wx:key="partnership_id">
+        <view class="partner-header">
+          <text class="partner-name">👤 {{item.partner_username}}</text>
+          <text class="streak-count">🔥 {{item.streak || 0}} 天连打</text>
+        </view>
+        <view class="partner-footer">
+          <button class="badge badge-success partner-btn" bindtap="gotoSupervise" data-id="{{item.partner_id}}">👀 监督</button>
+          <button class="badge badge-warning partner-btn" bindtap="gotoChat" data-id="{{item.partnership_id}}" data-name="{{item.partner_username}}">💬 留言</button>
+          <button class="badge badge-danger partner-btn" bindtap="dissolvePartner" data-id="{{item.partnership_id}}" data-name="{{item.partner_username}}">解除</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,19 @@
+<view class="container">
+  <view class="logo-area">
+    <text class="logo-title">DuoCheck 🔥</text>
+    <text class="logo-subtitle">搭档打卡·互相监督</text>
+  </view>
+
+  <view class="glass-card form-card">
+    <view class="tab-header">
+      <text class="tab-title {{isLogin ? 'active' : ''}}" bindtap="switchTab" data-tab="login">登录</text>
+      <text class="tab-title {{!isLogin ? 'active' : ''}}" bindtap="switchTab" data-tab="register">注册</text>
+    </view>
+
+    <input class="form-input" placeholder="请输入用户名" placeholder-class="form-input-placeholder" bindinput="onInputUsername" value="{{username}}" />
+    
+    <input class="form-input" password placeholder="请输入密码" placeholder-class="form-input-placeholder" bindinput="onInputPassword" value="{{password}}" />
+
+    <button class="btn-primary submit-btn" bindtap="onSubmit">{{isLogin ? '登录' : '注册'}}</button>
+  </view>
+</view>
