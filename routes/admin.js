@@ -135,4 +135,53 @@ router.put('/goals/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/users/:id - admin delete user completely (cascade clearing all records)
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    if (parseInt(id) === adminId) {
+      return res.status(400).json({ success: false, error: '管理员不能删除自己' });
+    }
+
+    // Verify user exists
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+    if (!user) {
+      return res.status(404).json({ success: false, error: '该用户不存在' });
+    }
+
+    // Transaction cascade delete
+    await db.transaction(async (tx) => {
+      // 1. Delete messages (sent by user or in user's partnerships)
+      await tx.run(`
+        DELETE FROM messages WHERE sender_id = ? 
+        OR partnership_id IN (
+          SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
+        )
+      `, [id, id, id]);
+
+      // 2. Delete checkins (created by user or verified by user)
+      await tx.run('DELETE FROM checkins WHERE user_id = ? OR verified_by = ?', [id, id]);
+
+      // 3. Delete goals belonging to the user
+      await tx.run('DELETE FROM goals WHERE user_id = ?', [id]);
+
+      // 4. Delete partnerships involving the user
+      await tx.run('DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?', [id, id]);
+
+      // 5. Delete partner requests involving the user
+      await tx.run('DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?', [id, id]);
+
+      // 6. Finally, delete the user record
+      await tx.run('DELETE FROM users WHERE id = ?', [id]);
+    });
+
+    res.json({ success: true, data: { message: '用户及其所有相关历史记录已成功清除' } });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ success: false, error: '删除用户失败' });
+  }
+});
+
 module.exports = router;

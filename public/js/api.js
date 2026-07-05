@@ -61,6 +61,7 @@ window.API = {
   admin: {
     stats: () => API.request('GET', '/api/admin/stats'),
     users: () => API.request('GET', '/api/admin/users'),
+    deleteUser: (id) => API.request('DELETE', `/api/admin/users/${id}`),
     checkins: () => API.request('GET', '/api/admin/checkins'),
     deleteCheckin: (id) => API.request('DELETE', `/api/admin/checkins/${id}`),
     goals: () => API.request('GET', '/api/admin/goals'),

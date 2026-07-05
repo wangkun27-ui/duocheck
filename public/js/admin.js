@@ -54,15 +54,19 @@ window.AdminPage = {
                   <th style="padding: 8px;">用户名</th>
                   <th style="padding: 8px;">角色</th>
                   <th style="padding: 8px;">注册时间</th>
+                  <th style="padding: 8px;">操作</th>
                 </tr>
               </thead>
               <tbody>
                 ${users.map(u => `
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" data-user-row-id="${u.id}">
                     <td style="padding: 8px; color: var(--text-secondary);">${u.id}</td>
                     <td style="padding: 8px; font-weight: 500;">${u.username}</td>
                     <td style="padding: 8px;">${u.is_admin ? '<span class="badge badge-warning">管理员</span>' : '<span class="badge badge-success">普通用户</span>'}</td>
                     <td style="padding: 8px; color: var(--text-secondary); font-size: 0.9em;">${parseSafeDate(u.created_at).toLocaleString('zh-CN')}</td>
+                    <td style="padding: 8px;">
+                      ${u.is_admin ? '-' : `<button class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}" data-name="${u.username}">🗑️ 删除用户</button>`}
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -195,6 +199,36 @@ window.AdminPage = {
         } catch (err) {
           App.showToast(err.message, 'error');
         }
+      });
+    });
+
+    // Delete user handler
+    document.querySelectorAll('.btn-delete-user').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        App.showModal('⚠️ 警告：彻底删除用户', `
+          <p style="color:#ef4444; font-weight: 600;">确定要彻底删除用户 「${name}」 吗？</p>
+          <p style="color:#94a3b8; font-size: 0.9em;">此操作将永久清除该用户及其所有的搭档请求、伙伴关系、打卡动态、目标记录、留言！且不可恢复。</p>
+        `, async () => {
+          try {
+            await API.admin.deleteUser(id);
+            App.showToast('已成功彻底删除用户', 'success');
+            
+            // Dynamic UI row removal
+            const row = document.querySelector(`tr[data-user-row-id="${id}"]`);
+            if (row) {
+              row.style.transition = 'all 0.3s ease';
+              row.style.background = 'rgba(239, 68, 68, 0.15)';
+              row.style.opacity = '0';
+              setTimeout(() => {
+                row.remove();
+              }, 300);
+            }
+          } catch (err) {
+            App.showToast(err.message, 'error');
+          }
+        });
       });
     });
   }
