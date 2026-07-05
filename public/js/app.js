@@ -282,16 +282,21 @@ window.GoalsPage = {
                 <div class="goal-info">
                   <div class="goal-title">${goal.title}</div>
                   <div class="goal-desc">${goal.description || '暂无描述'}</div>
-                  <div class="badge ${goal.status === 'active' ? 'badge-success' : 'badge-secondary'}">
-                    ${goal.status === 'active' ? '进行中' : '已暂停'}
+                  <div class="badge ${goal.status === 'active' ? 'badge-success' : goal.status === 'abandoned' ? 'badge-danger' : 'badge-secondary'}">
+                    ${goal.status === 'active' ? '进行中' : goal.status === 'abandoned' ? '已取消' : '已暂停'}
                   </div>
                 </div>
                 <div class="goal-actions">
-                  <button class="btn btn-ghost btn-sm btn-edit-goal" data-id="${goal.id}" data-title="${goal.title}" data-desc="${goal.description || ''}">✏️ 编辑</button>
-                  ${goal.status === 'active'
-                    ? `<button class="btn btn-ghost btn-sm btn-pause-goal" data-id="${goal.id}">⏸️ 暂停</button>`
-                    : `<button class="btn btn-ghost btn-sm btn-resume-goal" data-id="${goal.id}">▶️ 恢复</button>`
-                  }
+                  ${goal.status !== 'abandoned' ? `
+                    <button class="btn btn-ghost btn-sm btn-edit-goal" data-id="${goal.id}" data-title="${goal.title}" data-desc="${goal.description || ''}">✏️ 编辑</button>
+                    ${goal.status === 'active'
+                      ? `<button class="btn btn-ghost btn-sm btn-pause-goal" data-id="${goal.id}">⏸️ 暂停</button>`
+                      : `<button class="btn btn-ghost btn-sm btn-resume-goal" data-id="${goal.id}">▶️ 恢复</button>`
+                    }
+                    <button class="btn btn-danger btn-sm btn-cancel-goal" data-id="${goal.id}" data-title="${goal.title}">❌ 取消</button>
+                  ` : `
+                    <button class="btn btn-ghost btn-sm btn-resume-goal" data-id="${goal.id}">🔄 恢复</button>
+                  `}
                 </div>
               </div>
             `).join('')}
@@ -318,6 +323,10 @@ window.GoalsPage = {
       });
       document.querySelectorAll('.btn-resume-goal').forEach(btn => {
         btn.addEventListener('click', () => this.toggleGoalStatus(btn.dataset.id, 'active'));
+      });
+      // 取消目标按钮
+      document.querySelectorAll('.btn-cancel-goal').forEach(btn => {
+        btn.addEventListener('click', () => this.cancelGoal(btn.dataset.id, btn.dataset.title));
       });
     };
 
@@ -395,10 +404,29 @@ window.GoalsPage = {
     try {
       await API.goals.update(id, { status });
       App.showToast(status === 'paused' ? '目标已暂停' : '目标已恢复', 'success');
+      this.cache = null;
       this.render();
     } catch (err) {
       App.showToast(err.message, 'error');
     }
+  },
+
+  cancelGoal(id, title) {
+    App.showModal('❌ 确认取消目标', `
+      <p style="color:#f1f5f9">确定要取消目标 <strong>「${title}」</strong> 吗？</p>
+      <p style="color:#94a3b8;font-size:0.9em">取消后可以随时恢复。</p>
+    `, async () => {
+      try {
+        await API.goals.update(id, { status: 'abandoned' });
+        App.showToast('目标已取消', 'success');
+        this.cache = null;
+        this.render();
+        return true;
+      } catch (err) {
+        App.showToast(err.message, 'error');
+        return false;
+      }
+    });
   },
 };
 
