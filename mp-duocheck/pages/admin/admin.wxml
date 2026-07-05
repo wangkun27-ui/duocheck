@@ -1,0 +1,8 @@
+<view class="container">
+  <view class="section">
+    <text class="page-title">🛡️ 管理员后台</text>
+    <view class="glass-card">
+      <text style="color: #94a3b8; font-size: 28rpx;">小程序管理端正在开发中，请使用电脑网页端登录管理员账号进行全站数据管理及用户审核。</text>
+    </view>
+  </view>
+</view>

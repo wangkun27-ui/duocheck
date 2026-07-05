@@ -1,0 +1,10 @@
+.container {
+  padding: 30rpx;
+}
+.page-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 30rpx;
+  display: block;
+}
