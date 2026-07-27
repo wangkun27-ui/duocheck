@@ -52,8 +52,8 @@ window.PartnersPage = {
                 </div>
                 <div class="partner-actions">
                   <button class="btn btn-primary btn-sm btn-supervise" data-partner-id="${p.partner_id}">👀 监督</button>
-                  <button class="btn btn-secondary btn-sm btn-message" data-partnership-id="${p.partnership_id}" data-partner-name="${p.partner_username}">💬 留言</button>
-                  <button class="btn btn-danger btn-sm btn-dissolve" data-id="${p.partnership_id}" data-name="${p.partner_username}">解除</button>
+                  <button class="btn btn-secondary btn-sm btn-message" data-partnership-id="${p.id}" data-partner-name="${p.partner_username}">💬 留言</button>
+                  <button class="btn btn-danger btn-sm btn-dissolve" data-id="${p.id}" data-name="${p.partner_username}">解除</button>
                 </div>
               </div>
             `).join('')}

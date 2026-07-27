@@ -63,7 +63,7 @@ Page({
     if (!content.trim()) return;
 
     try {
-      await api.messages.send(this.data.partnershipId, content.trim());
+      await api.messages.send(this.data.partnershipId, { content: content.trim() });
       this.setData({ inputContent: '' });
       await this.loadMessages();
     } catch (err) {
