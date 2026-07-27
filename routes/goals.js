@@ -84,10 +84,10 @@ router.get('/partner/:userId', async (req, res) => {
 // PUT /api/goals/:id - update own goal
 router.put('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const goalId = parseInt(req.params.id);
     const { title, description, status } = req.body;
 
-    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [goalId, req.user.id]);
     if (!goal) {
       return res.status(404).json({ success: false, error: '目标不存在或无权修改' });
     }
@@ -109,9 +109,9 @@ router.put('/:id', async (req, res) => {
     const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
     const values = Object.values(updates);
 
-    await db.run(`UPDATE goals SET ${setClauses} WHERE id = ?`, [...values, id]);
+    await db.run(`UPDATE goals SET ${setClauses} WHERE id = ?`, [...values, goalId]);
 
-    const updated = await db.get('SELECT * FROM goals WHERE id = ?', [id]);
+    const updated = await db.get('SELECT * FROM goals WHERE id = ?', [goalId]);
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error('Update goal error:', err);
@@ -122,11 +122,11 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/goals/:id - delete own goal (completely remove goal and its checkins)
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const goalId = parseInt(req.params.id);
     const userId = req.user.id;
 
     // Verify goal exists and belongs to user
-    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [id, userId]);
+    const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [goalId, userId]);
     if (!goal) {
       return res.status(404).json({ success: false, error: '目标不存在或无权删除' });
     }
@@ -134,9 +134,9 @@ router.delete('/:id', async (req, res) => {
     // Use a transaction to delete goal and its related checkins
     await db.transaction(async (tx) => {
       // 1. Delete all checkins associated with this goal
-      await tx.run('DELETE FROM checkins WHERE goal_id = ?', [id]);
+      await tx.run('DELETE FROM checkins WHERE goal_id = ?', [goalId]);
       // 2. Delete the goal itself
-      await tx.run('DELETE FROM goals WHERE id = ?', [id]);
+      await tx.run('DELETE FROM goals WHERE id = ?', [goalId]);
     });
 
     res.json({ success: true, data: { message: '目标及打卡记录已彻底删除' } });
