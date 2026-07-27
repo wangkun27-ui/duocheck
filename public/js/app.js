@@ -406,6 +406,7 @@ window.GoalsPage = {
       await API.goals.update(id, { status });
       App.showToast(status === 'paused' ? '目标已暂停' : '目标已恢复', 'success');
       this.cache = null;
+      if (window.DashboardPage) window.DashboardPage.cache = null;
       this.render();
     } catch (err) {
       App.showToast(err.message, 'error');
@@ -417,6 +418,7 @@ window.GoalsPage = {
       await API.goals.delete(id);
       App.showToast('目标已被删除', 'success');
       this.cache = null;
+      if (window.DashboardPage) window.DashboardPage.cache = null;
       this.render();
     } catch (err) {
       App.showToast(err.message, 'error');
