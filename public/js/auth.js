@@ -87,6 +87,10 @@ window.AuthPage = {
       const data = await API.auth.login({ username, password });
       API.setToken(data.token);
       App.currentUser = data.user;
+      App.cache = {}; // Reset app cache
+      if (window.DashboardPage) window.DashboardPage.cache = null;
+      if (window.GoalsPage) window.GoalsPage.cache = null;
+      if (window.PartnersPage) window.PartnersPage.cache = null;
       App.showApp();
       App.preloadAllData(); // Trigger preload immediately on login
       App.navigate('dashboard');
@@ -116,6 +120,10 @@ window.AuthPage = {
       const data = await API.auth.register({ username, password });
       API.setToken(data.token);
       App.currentUser = data.user;
+      App.cache = {}; // Reset app cache
+      if (window.DashboardPage) window.DashboardPage.cache = null;
+      if (window.GoalsPage) window.GoalsPage.cache = null;
+      if (window.PartnersPage) window.PartnersPage.cache = null;
       App.showApp();
       App.preloadAllData(); // Trigger preload immediately on register
       App.navigate('dashboard');

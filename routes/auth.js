@@ -109,7 +109,7 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
 
     const user = await db.get('SELECT id, username, is_admin, created_at FROM users WHERE id = ?', [userId]);
     if (!user) {
