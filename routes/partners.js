@@ -117,7 +117,7 @@ router.get('/requests', async (req, res) => {
 // PUT /api/partners/requests/:id - accept or reject
 router.put('/requests/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const requestId = parseInt(req.params.id);
     const { action } = req.body; // 'accept' or 'reject'
 
     if (!['accept', 'reject'].includes(action)) {
@@ -126,7 +126,7 @@ router.put('/requests/:id', async (req, res) => {
 
     const request = await db.get(
       'SELECT * FROM partner_requests WHERE id = ? AND to_user_id = ? AND status = ?',
-      [id, req.user.id, 'pending']
+      [requestId, req.user.id, 'pending']
     );
 
     if (!request) {
@@ -141,7 +141,7 @@ router.put('/requests/:id', async (req, res) => {
       );
       if (senderPartnership) {
         // Auto-reject since the sender already found a partner
-        await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', id]);
+        await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', requestId]);
         return res.status(400).json({ success: false, error: '对方已经有搭档了' });
       }
 
@@ -155,7 +155,7 @@ router.put('/requests/:id', async (req, res) => {
 
       // Use transaction to accept request and create partnership
       const partnershipId = await db.transaction(async (tx) => {
-        await tx.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['accepted', id]);
+        await tx.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['accepted', requestId]);
         const result = await tx.run(
           'INSERT INTO partnerships (user1_id, user2_id) VALUES (?, ?)',
           [request.from_user_id, req.user.id]
@@ -167,7 +167,7 @@ router.put('/requests/:id', async (req, res) => {
           WHERE status = 'pending'
             AND (from_user_id IN (?, ?) OR to_user_id IN (?, ?))
             AND id != ?
-        `, [request.from_user_id, req.user.id, request.from_user_id, req.user.id, id]);
+        `, [request.from_user_id, req.user.id, request.from_user_id, req.user.id, requestId]);
 
         return result.lastInsertRowid;
       });
@@ -177,7 +177,7 @@ router.put('/requests/:id', async (req, res) => {
         data: { partnership_id: partnershipId }
       });
     } else {
-      await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', id]);
+      await db.run('UPDATE partner_requests SET status = ? WHERE id = ?', ['rejected', requestId]);
       res.json({ success: true, data: { message: '已拒绝搭档请求' } });
     }
   } catch (err) {
@@ -260,12 +260,12 @@ router.get('/', async (req, res) => {
 // DELETE /api/partners/:id - manually dissolve partnership
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const partnershipId = parseInt(req.params.id);
     const userId = req.user.id;
 
     const partnership = await db.get(
       'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?) AND status = ?',
-      [id, userId, userId, 'active']
+      [partnershipId, userId, userId, 'active']
     );
 
     if (!partnership) {
@@ -274,7 +274,7 @@ router.delete('/:id', async (req, res) => {
 
     await db.run(
       'UPDATE partnerships SET status = ?, dissolved_reason = ?, dissolved_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ['dissolved', 'manual', id]
+      ['dissolved', 'manual', partnershipId]
     );
 
     res.json({ success: true, data: { message: '搭档关系已解散' } });

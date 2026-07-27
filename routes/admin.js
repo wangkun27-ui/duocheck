@@ -84,8 +84,8 @@ router.get('/checkins', async (req, res) => {
 // DELETE /api/admin/checkins/:id - delete a checkin record
 router.delete('/checkins/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await db.run('DELETE FROM checkins WHERE id = ?', [id]);
+    const checkinId = parseInt(req.params.id);
+    await db.run('DELETE FROM checkins WHERE id = ?', [checkinId]);
     res.json({ success: true, data: { message: '打卡记录已删除' } });
   } catch (err) {
     console.error('Admin delete checkin error:', err);
@@ -113,7 +113,7 @@ router.get('/goals', async (req, res) => {
 // PUT /api/admin/goals/:id - modify/suspend a goal
 router.put('/goals/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const goalId = parseInt(req.params.id);
     const { status, title, description } = req.body;
 
     const updates = [];
@@ -126,7 +126,7 @@ router.put('/goals/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: '没有提供需要更新的参数' });
     }
 
-    params.push(id);
+    params.push(goalId);
     await db.run(`UPDATE goals SET ${updates.join(', ')} WHERE id = ?`, params);
     res.json({ success: true, data: { message: '目标更新成功' } });
   } catch (err) {
