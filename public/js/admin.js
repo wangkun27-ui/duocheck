@@ -13,7 +13,6 @@ window.AdminPage = {
       const checkins = checkinsData.checkins || [];
       const goals = goalsData.goals || [];
 
-      // Safe Date parsing helper to prevent browser-specific exceptions
       const parseSafeDate = (dateStr) => {
         if (!dateStr) return new Date();
         const formatted = dateStr.replace(/-/g, '/').replace('T', ' ').split('.')[0];
@@ -22,127 +21,114 @@ window.AdminPage = {
       };
 
       app.innerHTML = `
+        <!-- Stats Overview -->
         <div class="section">
-          <h2 class="section-title">🛡️ 管理员后台仪表盘</h2>
+          <h2 class="section-title">🛡️ 管理员后台</h2>
           <div class="stats-row">
             <div class="stat-card glass-card">
               <div class="stat-num">${stats.total_users || 0}</div>
-              <div class="stat-label">👥 注册总人数</div>
+              <div class="stat-label">👥 注册用户</div>
             </div>
             <div class="stat-card glass-card">
               <div class="stat-num">${stats.active_partnerships || 0}</div>
-              <div class="stat-label">🤝 活跃搭档对数</div>
+              <div class="stat-label">🤝 活跃搭档</div>
             </div>
             <div class="stat-card glass-card">
               <div class="stat-num">${stats.total_goals || 0}</div>
-              <div class="stat-label">🎯 目标总数</div>
+              <div class="stat-label">🎯 全站目标</div>
             </div>
             <div class="stat-card glass-card">
               <div class="stat-num">${stats.total_checkins || 0}</div>
-              <div class="stat-label">📸 累计打卡数</div>
+              <div class="stat-label">📸 累计打卡</div>
             </div>
           </div>
         </div>
 
+        <!-- User Management -->
         <div class="section">
-          <h3 class="section-title">👥 用户管理 (${users.length})</h3>
-          <div class="glass-card" style="padding: 15px; overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-              <thead>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
-                  <th style="padding: 8px;">ID</th>
-                  <th style="padding: 8px;">用户名</th>
-                  <th style="padding: 8px;">角色</th>
-                  <th style="padding: 8px;">注册时间</th>
-                  <th style="padding: 8px;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${users.map(u => `
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" data-user-row-id="${u.id}">
-                    <td style="padding: 8px; color: var(--text-secondary);">${u.id}</td>
-                    <td style="padding: 8px; font-weight: 500;">${u.username}</td>
-                    <td style="padding: 8px;">${u.is_admin ? '<span class="badge badge-warning">管理员</span>' : '<span class="badge badge-success">普通用户</span>'}</td>
-                    <td style="padding: 8px; color: var(--text-secondary); font-size: 0.9em;">${parseSafeDate(u.created_at).toLocaleString('zh-CN')}</td>
-                    <td style="padding: 8px;">
-                      ${u.is_admin ? '-' : `<button class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}" data-name="${u.username}">🗑️ 删除用户</button>`}
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+          <h3 class="section-title">👥 用户管理 <span class="badge badge-info">${users.length}</span></h3>
+          <div class="admin-card-list">
+            ${users.length === 0 ? `<div class="empty-state"><div class="empty-text">暂无用户</div></div>` :
+              users.map(u => `
+                <div class="admin-user-card glass-card" data-user-row-id="${u.id}">
+                  <div class="admin-card-main">
+                    <div class="admin-card-avatar">${u.username.charAt(0).toUpperCase()}</div>
+                    <div class="admin-card-info">
+                      <div class="admin-card-name">${u.username}
+                        ${u.is_admin ? '<span class="badge badge-warning" style="margin-left:6px;font-size:0.7em;">管理员</span>' : ''}
+                      </div>
+                      <div class="admin-card-meta">ID: ${u.id} · ${parseSafeDate(u.created_at).toLocaleDateString('zh-CN')}</div>
+                    </div>
+                  </div>
+                  <div class="admin-card-actions">
+                    ${u.is_admin ? '<span class="badge badge-warning">受保护</span>' :
+                      `<button class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}" data-name="${u.username}">🗑️ 删除</button>`}
+                  </div>
+                </div>
+              `).join('')}
           </div>
         </div>
 
+        <!-- Checkin Review -->
         <div class="section">
-          <h3 class="section-title">📸 动态打卡审核 (${checkins.length})</h3>
-          <div id="admin-checkins-list" style="display: flex; flex-direction: column; gap: 15px;">
+          <h3 class="section-title">📸 打卡动态审核 <span class="badge badge-info">${checkins.length}</span></h3>
+          <div id="admin-checkins-list" class="admin-card-list">
             ${checkins.length === 0 ? `
               <div class="empty-state"><div class="empty-text">暂无打卡动态记录</div></div>
             ` : checkins.map(c => `
-              <div class="glass-card" style="padding: 15px; display: flex; flex-direction: column; gap: 10px;" data-checkin-id="${c.id}">
-                <div class="flex-between">
-                  <div>
+              <div class="admin-checkin-card glass-card" data-checkin-id="${c.id}">
+                <div class="admin-checkin-header">
+                  <div class="admin-checkin-user">
                     <strong>👤 ${c.username}</strong>
-                    <span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">打卡目标: ${c.goal_title}</span>
+                    <span class="badge ${c.verified_status === 'confirmed' ? 'badge-success' : c.verified_status === 'questioned' ? 'badge-danger' : 'badge-warning'}" style="margin-left:8px;">
+                      ${c.verified_status === 'confirmed' ? '✅ 已通过' : c.verified_status === 'questioned' ? '❌ 被质疑' : '⏳ 未验证'}
+                    </span>
                   </div>
-                  <span style="font-size: 0.85em; color: var(--text-secondary);">${parseSafeDate(c.created_at).toLocaleString('zh-CN')}</span>
+                  <span class="admin-checkin-date">${parseSafeDate(c.created_at).toLocaleDateString('zh-CN')}</span>
                 </div>
-                ${c.note ? `<p style="margin: 5px 0;">💬 ${c.note}</p>` : ''}
+                <div class="admin-checkin-goal">🎯 ${c.goal_title}</div>
+                ${c.note ? `<p class="admin-checkin-note">💬 ${c.note}</p>` : ''}
                 ${c.images && c.images.length > 0 ? `
-                  <div class="image-gallery" style="margin-top: 5px;">
-                    ${c.images.map(img => `<img src="${img}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;" />`).join('')}
+                  <div class="admin-checkin-images">
+                    ${c.images.map(img => `<img src="${img}" class="admin-thumb" />`).join('')}
                   </div>
                 ` : ''}
-                <div class="flex-between" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                  <div>
-                    <span class="badge ${c.verified_status === 'confirmed' ? 'badge-success' : c.verified_status === 'questioned' ? 'badge-danger' : 'badge-warning'}">
-                      ${c.verified_status === 'confirmed' ? '已通过' : c.verified_status === 'questioned' ? '被质疑' : '未验证'}
-                    </span>
-                    ${c.verify_comment ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">评语: ${c.verify_comment} (核验人: ${c.verified_username})</span>` : ''}
-                  </div>
-                  <button class="btn btn-danger btn-sm btn-delete-checkin" data-id="${c.id}">🗑️ 删除此动态</button>
+                ${c.verify_comment ? `
+                  <div class="admin-checkin-comment">评语: ${c.verify_comment} (核验人: ${c.verified_username})</div>
+                ` : ''}
+                <div class="admin-card-actions" style="margin-top: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 0.75rem;">
+                  <button class="btn btn-danger btn-sm btn-delete-checkin" data-id="${c.id}">🗑️ 删除动态</button>
                 </div>
               </div>
             `).join('')}
           </div>
         </div>
 
+        <!-- Goal Management -->
         <div class="section">
-          <h3 class="section-title">🎯 全站目标管理 (${goals.length})</h3>
-          <div class="glass-card" style="padding: 15px; overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-              <thead>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                  <th style="padding: 8px;">创建人</th>
-                  <th style="padding: 8px;">目标标题</th>
-                  <th style="padding: 8px;">描述</th>
-                  <th style="padding: 8px;">状态</th>
-                  <th style="padding: 8px;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${goals.map(g => `
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="padding: 8px; font-weight: 500;">👤 ${g.username}</td>
-                    <td style="padding: 8px;">${g.title}</td>
-                    <td style="padding: 8px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${g.description || '-'}</td>
-                    <td style="padding: 8px;">
-                      <span class="badge ${g.status === 'active' ? 'badge-success' : g.status === 'completed' ? 'badge-info' : 'badge-danger'}">
-                        ${g.status === 'active' ? '活跃中' : g.status === 'completed' ? '已完成' : '已放弃'}
-                      </span>
-                    </td>
-                    <td style="padding: 8px;">
-                      <select class="admin-goal-status-select" data-id="${g.id}" style="background: rgba(255,255,255,0.1); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px;">
-                        <option value="active" ${g.status === 'active' ? 'selected' : ''}>活跃中</option>
-                        <option value="completed" ${g.status === 'completed' ? 'selected' : ''}>已完成</option>
-                        <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''}>强制废弃</option>
-                      </select>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+          <h3 class="section-title">🎯 全站目标管理 <span class="badge badge-info">${goals.length}</span></h3>
+          <div class="admin-card-list">
+            ${goals.length === 0 ? `<div class="empty-state"><div class="empty-text">暂无目标</div></div>` :
+              goals.map(g => `
+                <div class="admin-goal-card glass-card">
+                  <div class="admin-card-main">
+                    <div class="admin-card-info">
+                      <div class="admin-card-name">${g.title}</div>
+                      <div class="admin-card-meta">👤 ${g.username}${g.description ? ' · ' + g.description.slice(0, 30) + (g.description.length > 30 ? '…' : '') : ''}</div>
+                    </div>
+                  </div>
+                  <div class="admin-card-actions">
+                    <span class="badge ${g.status === 'active' ? 'badge-success' : g.status === 'completed' ? 'badge-info' : 'badge-danger'}" style="margin-right:8px;">
+                      ${g.status === 'active' ? '活跃' : g.status === 'completed' ? '完成' : '放弃'}
+                    </span>
+                    <select class="admin-goal-status-select form-input" data-id="${g.id}" style="width:auto; padding:0.3rem 0.5rem; font-size:0.8rem;">
+                      <option value="active" ${g.status === 'active' ? 'selected' : ''}>活跃中</option>
+                      <option value="completed" ${g.status === 'completed' ? 'selected' : ''}>已完成</option>
+                      <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''}>强制废弃</option>
+                    </select>
+                  </div>
+                </div>
+              `).join('')}
           </div>
         </div>
       `;
@@ -187,13 +173,13 @@ window.AdminPage = {
           await API.admin.updateGoal(id, { status });
           App.showToast('已成功更新目标状态', 'success');
           
-          // Optimistic UI/DOM Patching: Update goal status badge color and text instantly without calling this.render()
-          const row = select.closest('tr');
-          if (row) {
-            const badge = row.querySelector('.badge');
+          // Optimistic UI: Update goal status badge in card layout
+          const card = select.closest('.admin-goal-card');
+          if (card) {
+            const badge = card.querySelector('.badge');
             if (badge) {
               badge.className = `badge ${status === 'active' ? 'badge-success' : status === 'completed' ? 'badge-info' : 'badge-danger'}`;
-              badge.textContent = status === 'active' ? '活跃中' : status === 'completed' ? '已完成' : '已放弃';
+              badge.textContent = status === 'active' ? '活跃' : status === 'completed' ? '完成' : '放弃';
             }
           }
         } catch (err) {
@@ -215,15 +201,13 @@ window.AdminPage = {
             await API.admin.deleteUser(id);
             App.showToast('已成功彻底删除用户', 'success');
             
-            // Dynamic UI row removal
-            const row = document.querySelector(`tr[data-user-row-id="${id}"]`);
-            if (row) {
-              row.style.transition = 'all 0.3s ease';
-              row.style.background = 'rgba(239, 68, 68, 0.15)';
-              row.style.opacity = '0';
-              setTimeout(() => {
-                row.remove();
-              }, 300);
+            // Optimistic UI: fade out and remove user card
+            const card = document.querySelector(`[data-user-row-id="${id}"]`);
+            if (card) {
+              card.style.transition = 'all 0.3s ease';
+              card.style.background = 'rgba(239, 68, 68, 0.15)';
+              card.style.opacity = '0';
+              setTimeout(() => card.remove(), 300);
             }
           } catch (err) {
             App.showToast(err.message, 'error');

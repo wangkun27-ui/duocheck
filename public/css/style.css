@@ -1506,8 +1506,142 @@ select.form-input {
 }
 
 /* ------------------------------------------------------------------
-   35. Utility Classes
+   36. Admin Panel Mobile Card Styles
    ------------------------------------------------------------------ */
+.admin-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-user-card,
+.admin-goal-card,
+.admin-checkin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.admin-card-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-card-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary-accent));
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.admin-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-card-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-card-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.admin-checkin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-checkin-user {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.admin-checkin-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.admin-checkin-goal {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--primary-light);
+}
+
+.admin-checkin-note {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0;
+  line-height: 1.4;
+}
+
+.admin-checkin-images {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.admin-thumb {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.admin-checkin-comment {
+  font-size: 0.8rem;
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.08);
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+/* On desktop, keep user & goal cards horizontal */
+@media (min-width: 769px) {
+  .admin-user-card,
+  .admin-goal-card {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
 .text-center {
   text-align: center;
 }
