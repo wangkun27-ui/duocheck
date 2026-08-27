@@ -222,8 +222,16 @@ async function initDatabase() {
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
 
-    // Targeted cleanup for specific legacy test accounts 'alexwang1' and 'ales'
+    // Targeted cleanup for specific legacy test accounts 'alexwang1', 'ales' and test goals named 'test'
     try {
+      // 1. Delete legacy test goals named 'test'
+      await pgPool.query(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
+      const goalRes = await pgPool.query(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
+      if (goalRes.rowCount > 0) {
+        console.log(`[DB Migration] Cleaned up ${goalRes.rowCount} test goals.`);
+      }
+
+      // 2. Delete legacy test users 'alexwang1' and 'ales'
       const legacyTestUsers = ['alexwang1', 'ales'];
       for (const uname of legacyTestUsers) {
         const uRes = await pgPool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [uname]);
@@ -239,7 +247,7 @@ async function initDatabase() {
         }
       }
     } catch (e) {
-      console.warn('[DB Migration] Legacy user cleanup warning:', e.message);
+      console.warn('[DB Migration] Legacy cleanup warning:', e.message);
     }
   } else {
     sqliteDb.exec(`
@@ -311,8 +319,11 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
 
-    // Targeted SQLite cleanup for legacy test accounts 'alexwang1' and 'ales'
+    // Targeted SQLite cleanup for legacy test accounts 'alexwang1', 'ales' and test goals named 'test'
     try {
+      sqliteDb.exec(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
+      sqliteDb.exec(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
+
       const legacyTestUsers = ['alexwang1', 'ales'];
       for (const uname of legacyTestUsers) {
         const u = sqliteDb.prepare(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`).get(uname);
