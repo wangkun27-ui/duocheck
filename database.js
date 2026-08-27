@@ -221,34 +221,6 @@ async function initDatabase() {
       }
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
-
-    // Targeted cleanup for specific legacy test accounts 'alexwang1', 'ales' and test goals named 'test'
-    try {
-      // 1. Delete legacy test goals named 'test'
-      await pgPool.query(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
-      const goalRes = await pgPool.query(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
-      if (goalRes.rowCount > 0) {
-        console.log(`[DB Migration] Cleaned up ${goalRes.rowCount} test goals.`);
-      }
-
-      // 2. Delete legacy test users 'alexwang1' and 'ales'
-      const legacyTestUsers = ['alexwang1', 'ales'];
-      for (const uname of legacyTestUsers) {
-        const uRes = await pgPool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [uname]);
-        if (uRes.rows.length > 0) {
-          const uid = uRes.rows[0].id;
-          await pgPool.query(`DELETE FROM messages WHERE sender_id = $1 OR partnership_id IN (SELECT id FROM partnerships WHERE user1_id = $1 OR user2_id = $1)`, [uid]);
-          await pgPool.query(`DELETE FROM checkins WHERE user_id = $1 OR verified_by = $1 OR goal_id IN (SELECT id FROM goals WHERE user_id = $1)`, [uid]);
-          await pgPool.query(`DELETE FROM partner_requests WHERE from_user_id = $1 OR to_user_id = $1`, [uid]);
-          await pgPool.query(`DELETE FROM partnerships WHERE user1_id = $1 OR user2_id = $1`, [uid]);
-          await pgPool.query(`DELETE FROM goals WHERE user_id = $1`, [uid]);
-          await pgPool.query(`DELETE FROM users WHERE id = $1`, [uid]);
-          console.log(`[DB Migration] Cleaned up legacy test user '${uname}' (id=${uid})`);
-        }
-      }
-    } catch (e) {
-      console.warn('[DB Migration] Legacy cleanup warning:', e.message);
-    }
   } else {
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -318,27 +290,6 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_partnership ON messages(partnership_id);
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
-
-    // Targeted SQLite cleanup for legacy test accounts 'alexwang1', 'ales' and test goals named 'test'
-    try {
-      sqliteDb.exec(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
-      sqliteDb.exec(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
-
-      const legacyTestUsers = ['alexwang1', 'ales'];
-      for (const uname of legacyTestUsers) {
-        const u = sqliteDb.prepare(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`).get(uname);
-        if (u) {
-          sqliteDb.exec(`DELETE FROM messages WHERE sender_id = ${u.id} OR partnership_id IN (SELECT id FROM partnerships WHERE user1_id = ${u.id} OR user2_id = ${u.id})`);
-          sqliteDb.exec(`DELETE FROM checkins WHERE user_id = ${u.id} OR verified_by = ${u.id} OR goal_id IN (SELECT id FROM goals WHERE user_id = ${u.id})`);
-          sqliteDb.exec(`DELETE FROM partner_requests WHERE from_user_id = ${u.id} OR to_user_id = ${u.id}`);
-          sqliteDb.exec(`DELETE FROM partnerships WHERE user1_id = ${u.id} OR user2_id = ${u.id}`);
-          sqliteDb.exec(`DELETE FROM goals WHERE user_id = ${u.id}`);
-          sqliteDb.exec(`DELETE FROM users WHERE id = ${u.id}`);
-        }
-      }
-    } catch (e) {
-      console.warn('[SQLite Cleanup Warning]', e.message);
-    }
   }
 }
 
