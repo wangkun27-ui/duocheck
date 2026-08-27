@@ -70,9 +70,20 @@ window.MessagesPage = {
         return;
       }
       
+      const parseSafeDate = (dateStr) => {
+        if (!dateStr) return new Date();
+        // If string ends with Z or contains offset, Date parse handles UTC correctly
+        if (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+          // Treat naive DB timestamps from SQLite/PG as UTC
+          dateStr = dateStr.replace(' ', 'T') + 'Z';
+        }
+        return new Date(dateStr);
+      };
+
       list.innerHTML = messages.map(msg => {
         const isSent = msg.sender_id === App.currentUser.id;
-        const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        const msgDate = parseSafeDate(msg.created_at);
+        const time = msgDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
         return `
           <div class="message-bubble ${isSent ? 'sent' : 'received'}">
             <div class="message-content">${msg.content}</div>
