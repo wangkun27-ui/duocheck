@@ -221,6 +221,21 @@ async function initDatabase() {
       }
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
+
+    // Ensure default admin user exists if no admin account is found
+    try {
+      const adminCheck = await pgPool.query("SELECT id FROM users WHERE username = 'admin' OR is_admin = 1");
+      if (adminCheck.rows.length === 0) {
+        const defaultAdminHash = '$2a$10$jYSIjyi6jMJ1/GPZCKh3lOD/D9kRbyG4RM6Cy9ySN46B6KgR/M786'; // 'admin123'
+        await pgPool.query(
+          "INSERT INTO users (username, password_hash, is_admin) VALUES ('admin', $1, 1)",
+          [defaultAdminHash]
+        );
+        console.log("[DB] Default admin account 'admin' created (password: admin123).");
+      }
+    } catch (adminErr) {
+      console.warn('[DB] Auto admin seed warning:', adminErr.message);
+    }
   } else {
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -290,6 +305,20 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_partnership ON messages(partnership_id);
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
+
+    // Ensure default admin user exists for SQLite
+    try {
+      const adminCheck = sqliteDb.prepare("SELECT id FROM users WHERE username = 'admin' OR is_admin = 1").get();
+      if (!adminCheck) {
+        const defaultAdminHash = '$2a$10$jYSIjyi6jMJ1/GPZCKh3lOD/D9kRbyG4RM6Cy9ySN46B6KgR/M786'; // 'admin123'
+        sqliteDb.prepare(
+          "INSERT INTO users (username, password_hash, is_admin) VALUES ('admin', ?, 1)"
+        ).run(defaultAdminHash);
+        console.log("[DB] Default admin account 'admin' created (password: admin123).");
+      }
+    } catch (adminErr) {
+      console.warn('[DB] Auto admin seed warning:', adminErr.message);
+    }
   }
 }
 
