@@ -221,6 +221,34 @@ async function initDatabase() {
       }
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
+
+    // Automatically cleanup requested target users and goals
+    try {
+      // 1. Delete test goals
+      await pgPool.query(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
+      const goalRes = await pgPool.query(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
+      if (goalRes.rowCount > 0) {
+        console.log(`[DB Migration Cleanup] Deleted ${goalRes.rowCount} test goals.`);
+      }
+
+      // 2. Delete specified users (alexwang1, ales)
+      const usersToDelete = ['alexwang1', 'ales'];
+      for (const uname of usersToDelete) {
+        const uRes = await pgPool.query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [uname]);
+        if (uRes.rows.length > 0) {
+          const uid = uRes.rows[0].id;
+          await pgPool.query(`DELETE FROM messages WHERE sender_id = $1 OR partnership_id IN (SELECT id FROM partnerships WHERE user1_id = $1 OR user2_id = $1)`, [uid]);
+          await pgPool.query(`DELETE FROM checkins WHERE user_id = $1 OR verified_by = $1`, [uid]);
+          await pgPool.query(`DELETE FROM goals WHERE user_id = $1`, [uid]);
+          await pgPool.query(`DELETE FROM partnerships WHERE user1_id = $1 OR user2_id = $1`, [uid]);
+          await pgPool.query(`DELETE FROM partner_requests WHERE from_user_id = $1 OR to_user_id = $1`, [uid]);
+          await pgPool.query(`DELETE FROM users WHERE id = $1`, [uid]);
+          console.log(`[DB Migration Cleanup] Successfully deleted user '${uname}' (id=${uid}).`);
+        }
+      }
+    } catch (cleanErr) {
+      console.error('[DB Migration Cleanup] Error during automatic cleanup:', cleanErr.message);
+    }
   } else {
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
