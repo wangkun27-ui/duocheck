@@ -52,8 +52,10 @@ window.DashboardPage = {
             <div class="stat-label">🎯 活跃目标</div>
           </div>
           <div class="stat-card glass-card">
-            <div class="stat-value">${stats.partner_count || 0}</div>
-            <div class="stat-label">👥 搭档数量</div>
+            <div class="stat-value" style="font-size: ${dashData.partnerActivity?.partner_username ? '1.5rem' : '1.8rem'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${dashData.partnerActivity?.partner_username || '暂无'}
+            </div>
+            <div class="stat-label">🤝 我的搭档</div>
           </div>
         </div>
         
