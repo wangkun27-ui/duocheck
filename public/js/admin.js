@@ -121,10 +121,10 @@ window.AdminPage = {
                     <span class="badge ${g.status === 'active' ? 'badge-success' : g.status === 'completed' ? 'badge-info' : 'badge-danger'}" style="margin-right:8px;">
                       ${g.status === 'active' ? '活跃' : g.status === 'completed' ? '完成' : '放弃'}
                     </span>
-                    <select class="admin-goal-status-select form-input" data-id="${g.id}" style="width:auto; padding:0.3rem 0.5rem; font-size:0.8rem;">
-                      <option value="active" ${g.status === 'active' ? 'selected' : ''}>活跃中</option>
-                      <option value="completed" ${g.status === 'completed' ? 'selected' : ''}>已完成</option>
-                      <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''}>强制废弃</option>
+                    <select class="admin-goal-status-select form-input" data-id="${g.id}" style="width:auto; padding:0.3rem 1.8rem 0.3rem 0.6rem; font-size:0.8rem; background-color:#0f172a; color:#ffffff;">
+                      <option value="active" ${g.status === 'active' ? 'selected' : ''} style="background-color:#0f172a; color:#ffffff;">活跃中</option>
+                      <option value="completed" ${g.status === 'completed' ? 'selected' : ''} style="background-color:#0f172a; color:#ffffff;">已完成</option>
+                      <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''} style="background-color:#0f172a; color:#ffffff;">强制废弃</option>
                     </select>
                     <button class="btn btn-danger btn-sm btn-delete-admin-goal" data-id="${g.id}" data-title="${g.title}">🗑️ 删除</button>
                   </div>
