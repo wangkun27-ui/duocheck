@@ -19,6 +19,7 @@ window.DashboardPage = {
         checkin_id: g.checkin?.id
       })) || [];
       const dissolved = dashData.dissolvedPartnerships || [];
+      const partnerFeed = dashData.partnerFeed || [];
       const fireEmojis = streak > 0 ? '🔥'.repeat(Math.min(streak, 10)) : '';
 
       app.innerHTML = `
