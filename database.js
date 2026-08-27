@@ -222,16 +222,22 @@ async function initDatabase() {
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
 
-    // Ensure default admin user exists if no admin account is found
+    // Ensure default admin user exists and has password '12345678'
     try {
-      const adminCheck = await pgPool.query("SELECT id FROM users WHERE username = 'admin' OR is_admin = 1");
+      const defaultAdminHash = '$2a$10$L.PabDnAyiHkJsPZ2f1.de8o10V8L/rm/2KWwV8pA83IVBydGa6oa'; // '12345678'
+      const adminCheck = await pgPool.query("SELECT id FROM users WHERE username = 'admin'");
       if (adminCheck.rows.length === 0) {
-        const defaultAdminHash = '$2a$10$jYSIjyi6jMJ1/GPZCKh3lOD/D9kRbyG4RM6Cy9ySN46B6KgR/M786'; // 'admin123'
         await pgPool.query(
           "INSERT INTO users (username, password_hash, is_admin) VALUES ('admin', $1, 1)",
           [defaultAdminHash]
         );
-        console.log("[DB] Default admin account 'admin' created (password: admin123).");
+        console.log("[DB] Default admin account 'admin' created (password: 12345678).");
+      } else {
+        await pgPool.query(
+          "UPDATE users SET password_hash = $1, is_admin = 1 WHERE username = 'admin'",
+          [defaultAdminHash]
+        );
+        console.log("[DB] Admin account 'admin' password updated to 12345678.");
       }
     } catch (adminErr) {
       console.warn('[DB] Auto admin seed warning:', adminErr.message);
@@ -306,15 +312,20 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
 
-    // Ensure default admin user exists for SQLite
+    // Ensure default admin user exists and has password '12345678' for SQLite
     try {
-      const adminCheck = sqliteDb.prepare("SELECT id FROM users WHERE username = 'admin' OR is_admin = 1").get();
+      const defaultAdminHash = '$2a$10$L.PabDnAyiHkJsPZ2f1.de8o10V8L/rm/2KWwV8pA83IVBydGa6oa'; // '12345678'
+      const adminCheck = sqliteDb.prepare("SELECT id FROM users WHERE username = 'admin'").get();
       if (!adminCheck) {
-        const defaultAdminHash = '$2a$10$jYSIjyi6jMJ1/GPZCKh3lOD/D9kRbyG4RM6Cy9ySN46B6KgR/M786'; // 'admin123'
         sqliteDb.prepare(
           "INSERT INTO users (username, password_hash, is_admin) VALUES ('admin', ?, 1)"
         ).run(defaultAdminHash);
-        console.log("[DB] Default admin account 'admin' created (password: admin123).");
+        console.log("[DB] Default admin account 'admin' created (password: 12345678).");
+      } else {
+        sqliteDb.prepare(
+          "UPDATE users SET password_hash = ?, is_admin = 1 WHERE username = 'admin'"
+        ).run(defaultAdminHash);
+        console.log("[DB] Admin account 'admin' password updated to 12345678.");
       }
     } catch (adminErr) {
       console.warn('[DB] Auto admin seed warning:', adminErr.message);
