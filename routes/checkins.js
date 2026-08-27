@@ -339,8 +339,11 @@ router.get('/dashboard', async (req, res) => {
     `, [userId, userId, userId, userId]);
 
     let partnerActivity = null;
+    let partnerFeed = [];
     if (partnership) {
       const partnerId = partnership.partner_id;
+      const partnerUsername = partnership.partner_username;
+
       const partnerGoals = await db.all(
         'SELECT * FROM goals WHERE user_id = ? AND status = ?',
         [partnerId, 'active']
@@ -351,6 +354,19 @@ router.get('/dashboard', async (req, res) => {
           'SELECT * FROM checkins WHERE goal_id = ? AND date = ?',
           [g.id, today]
         );
+        if (checkin) {
+          partnerFeed.push({
+            id: 'checkin_' + checkin.id,
+            type: 'partner_checkin',
+            partner_id: partnerId,
+            partner_username: partnerUsername,
+            goal_title: g.title,
+            note: checkin.note,
+            verified_status: checkin.verified_status,
+            verify_comment: checkin.verify_comment,
+            time: checkin.created_at
+          });
+        }
         return {
           goal: g,
           checked_in: !!checkin,
@@ -361,9 +377,60 @@ router.get('/dashboard', async (req, res) => {
       partnerActivity = {
         partnership_id: partnership.id,
         partner_id: partnerId,
-        partner_username: partnership.partner_username,
+        partner_username: partnerUsername,
         goals: goalsWithCheckins
       };
+
+      // 2. Partner's verification (confirmed / questioned) of USER's checkins
+      const userCheckinsVerified = await db.all(`
+        SELECT c.*, g.title as goal_title
+        FROM checkins c
+        JOIN goals g ON g.id = c.goal_id
+        WHERE c.user_id = ? AND c.verified_by = ? AND c.verified_status IS NOT NULL
+        ORDER BY c.created_at DESC
+        LIMIT 5
+      `, [userId, partnerId]);
+
+      for (const c of userCheckinsVerified) {
+        partnerFeed.push({
+          id: 'verify_' + c.id + '_' + c.verified_status,
+          type: c.verified_status === 'confirmed' ? 'partner_confirmed' : 'partner_questioned',
+          partner_id: partnerId,
+          partner_username: partnerUsername,
+          goal_id: c.goal_id,
+          goal_title: c.goal_title,
+          verified_status: c.verified_status,
+          verify_comment: c.verify_comment,
+          time: c.created_at
+        });
+      }
+
+      // 3. Partner's latest messages
+      const recentMessages = await db.all(`
+        SELECT * FROM messages
+        WHERE partnership_id = ? AND sender_id = ?
+        ORDER BY created_at DESC
+        LIMIT 3
+      `, [partnership.id, partnerId]);
+
+      for (const msg of recentMessages) {
+        partnerFeed.push({
+          id: 'msg_' + msg.id,
+          type: 'partner_message',
+          partner_id: partnerId,
+          partnership_id: partnership.id,
+          partner_username: partnerUsername,
+          content: msg.content,
+          time: msg.created_at
+        });
+      }
+
+      // Sort feed items by timestamp descending
+      partnerFeed.sort((a, b) => {
+        const da = new Date(a.time || 0);
+        const dbTime = new Date(b.time || 0);
+        return dbTime - da;
+      });
     }
 
     // Check dissolved partnerships from today (missed_checkin)
@@ -398,6 +465,7 @@ router.get('/dashboard', async (req, res) => {
         goals: todayGoals,
         streak,
         partnerActivity,
+        partnerFeed,
         dissolvedPartnerships: dissolvedToday
       }
     });

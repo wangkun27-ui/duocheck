@@ -91,30 +91,99 @@ window.DashboardPage = {
         </div>
         
         <div class="section">
-          <h3 class="section-title">👥 搭档动态</h3>
+          <h3 class="section-title">⚡ 搭档动态与通知</h3>
           <div id="partner-activities">
-            ${partnerActivities.length === 0 ? `
+            ${partnerFeed.length === 0 ? `
               <div class="empty-state">
                 <div class="empty-icon">👥</div>
-                <div class="empty-text">还没有搭档动态<br>去找一个搭档互相监督吧！</div>
+                <div class="empty-text">暂无搭档新动态<br>搭档打卡、留言、审核通过与质疑都会在这里实时提醒！</div>
               </div>
-            ` : partnerActivities.map(activity => `
-              <div class="activity-card glass-card">
-                <div class="activity-header">
-                  <strong>${activity.partner_username || activity.username}</strong>
-                  <span class="badge ${activity.verified ? 'badge-success' : 'badge-warning'}">
-                    ${activity.verified ? '已验证' : '待审核'}
-                  </span>
-                </div>
-                <div class="activity-body">
-                  <div class="activity-goal">🎯 ${activity.goal_title || '目标'}</div>
-                  ${activity.note ? `<div class="activity-note">${activity.note}</div>` : ''}
-                </div>
-                ${!activity.verified ? `
-                  <button class="btn btn-ghost btn-sm btn-review" data-partner-id="${activity.partner_id}">👀 去审核</button>
-                ` : ''}
-              </div>
-            `).join('')}
+            ` : partnerFeed.map(item => {
+              const parseSafeTime = (dateStr) => {
+                if (!dateStr) return '';
+                const d = new Date(dateStr);
+                return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+              };
+
+              if (item.type === 'partner_checkin') {
+                const isVerified = item.verified_status !== null && item.verified_status !== undefined;
+                return `
+                  <div class="activity-card glass-card">
+                    <div class="activity-header">
+                      <span>📸 <strong>${item.partner_username}</strong> 提交了新打卡</span>
+                      <span class="badge ${isVerified ? (item.verified_status === 'confirmed' ? 'badge-success' : 'badge-danger') : 'badge-warning'}">
+                        ${isVerified ? (item.verified_status === 'confirmed' ? '已通过' : '已质疑') : '待审核'}
+                      </span>
+                    </div>
+                    <div class="activity-body">
+                      <div class="activity-goal">🎯 目标：「${item.goal_title}」</div>
+                      ${item.note ? `<div class="activity-note">📝 说明：${item.note}</div>` : ''}
+                    </div>
+                    <div class="flex-between mt-1" style="align-items:center;">
+                      <span class="text-secondary" style="font-size:0.75rem;">${parseSafeTime(item.time)}</span>
+                      ${!isVerified ? `
+                        <button class="btn btn-primary btn-sm btn-review" data-partner-id="${item.partner_id}">👀 去审核</button>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }
+
+              if (item.type === 'partner_confirmed') {
+                return `
+                  <div class="activity-card glass-card" style="border-left: 3px solid var(--success);">
+                    <div class="activity-header">
+                      <span>🎉 <strong>${item.partner_username}</strong> 确认通过了你的打卡</span>
+                      <span class="badge badge-success">✅ 验证通过</span>
+                    </div>
+                    <div class="activity-body">
+                      <div class="activity-goal">🎯 目标：「${item.goal_title}」</div>
+                      ${item.verify_comment ? `<div class="activity-note">💬 评语：${item.verify_comment}</div>` : ''}
+                    </div>
+                    <div class="text-secondary" style="font-size:0.75rem; margin-top:0.3rem;">${parseSafeTime(item.time)}</div>
+                  </div>
+                `;
+              }
+
+              if (item.type === 'partner_questioned') {
+                return `
+                  <div class="activity-card glass-card" style="border-left: 3px solid var(--danger);">
+                    <div class="activity-header">
+                      <span>⚠️ <strong>${item.partner_username}</strong> 质疑了你的打卡</span>
+                      <span class="badge badge-danger">❌ 被质疑</span>
+                    </div>
+                    <div class="activity-body">
+                      <div class="activity-goal">🎯 目标：「${item.goal_title}」</div>
+                      ${item.verify_comment ? `<div class="activity-note" style="color:var(--warning);font-weight:500;">💬 质疑评语：${item.verify_comment}</div>` : ''}
+                    </div>
+                    <div class="flex-between mt-1" style="align-items:center;">
+                      <span class="text-secondary" style="font-size:0.75rem;">${parseSafeTime(item.time)}</span>
+                      <button class="btn btn-primary btn-sm btn-recheckin" data-goal-id="${item.goal_id}">🔄 去重新打卡</button>
+                    </div>
+                  </div>
+                `;
+              }
+
+              if (item.type === 'partner_message') {
+                return `
+                  <div class="activity-card glass-card" style="border-left: 3px solid var(--primary-light);">
+                    <div class="activity-header">
+                      <span>💬 <strong>${item.partner_username}</strong> 发来新留言</span>
+                      <span class="badge badge-info">新消息</span>
+                    </div>
+                    <div class="activity-body">
+                      <div class="activity-note" style="font-size:0.9rem; color:var(--text-primary);">「${item.content}」</div>
+                    </div>
+                    <div class="flex-between mt-1" style="align-items:center;">
+                      <span class="text-secondary" style="font-size:0.75rem;">${parseSafeTime(item.time)}</span>
+                      <button class="btn btn-secondary btn-sm btn-reply-msg" data-partnership-id="${item.partnership_id}" data-partner-name="${item.partner_username}">💬 去回复</button>
+                    </div>
+                  </div>
+                `;
+              }
+
+              return '';
+            }).join('')}
           </div>
         </div>
       `;
@@ -135,6 +204,21 @@ window.DashboardPage = {
       document.querySelectorAll('.btn-review').forEach(btn => {
         btn.addEventListener('click', () => {
           App.navigate('checkin', { mode: 'review', partnerId: btn.dataset.partnerId });
+        });
+      });
+
+      document.querySelectorAll('.btn-recheckin').forEach(btn => {
+        btn.addEventListener('click', () => {
+          App.navigate('checkin', { mode: 'checkin', goalId: btn.dataset.goalId });
+        });
+      });
+
+      document.querySelectorAll('.btn-reply-msg').forEach(btn => {
+        btn.addEventListener('click', () => {
+          App.navigate('messages', {
+            partnershipId: btn.dataset.partnershipId,
+            partnerName: btn.dataset.partnerName
+          });
         });
       });
     };
