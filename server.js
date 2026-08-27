@@ -103,7 +103,7 @@ const VERSION = '4.0.0-cloud';
 
 app.listen(PORT, () => {
   console.log(`=========================================`);
-  console.log(` DuoCheck Server running on port ${PORT}`);
+  console.log(` Make A Difference Server running on port ${PORT}`);
   console.log(` Version: ${VERSION}`);
   console.log(` Mode: ${db.isPg ? 'Cloud PostgreSQL' : 'Local SQLite'}`);
   console.log(`=========================================`);

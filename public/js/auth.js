@@ -6,7 +6,7 @@ window.AuthPage = {
     app.innerHTML = `
       <div class="auth-container">
         <div class="auth-card glass-card">
-          <h1 class="auth-title">DuoCheck 🔥</h1>
+          <h1 class="auth-title">Make A Difference 🔥</h1>
           <p class="auth-subtitle">搭档打卡，互相监督，一起进步</p>
           <div id="auth-form">
             ${this.renderForm()}
