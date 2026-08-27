@@ -123,7 +123,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
 
     // Verify goal exists and belongs to user
     const goal = await db.get('SELECT * FROM goals WHERE id = ? AND user_id = ?', [goalId, userId]);
@@ -131,14 +131,17 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: '目标不存在或无权删除' });
     }
 
-    // Use a transaction to delete goal and its related checkins
-    await db.transaction(async (tx) => {
-      // 1. Delete all checkins associated with this goal
-      await tx.run('DELETE FROM checkins WHERE goal_id = ?', [goalId]);
-      // 2. Delete the goal itself
-      await tx.run('DELETE FROM goals WHERE id = ?', [goalId]);
-    });
+    // Delete checkins first (for SQLite compatibility), then goal
+    // In PostgreSQL, ON DELETE CASCADE on checkins.goal_id handles this automatically
+    await db.run('DELETE FROM checkins WHERE goal_id = ?', [goalId]);
+    const result = await db.run('DELETE FROM goals WHERE id = ? AND user_id = ?', [goalId, userId]);
 
+    if (result.rowCount === 0) {
+      console.error(`[DELETE GOAL] rowCount=0 after delete, goalId=${goalId} userId=${userId}`);
+      return res.status(500).json({ success: false, error: '删除失败，数据库未执行删除操作' });
+    }
+
+    console.log(`[DELETE GOAL] Successfully deleted goalId=${goalId} for userId=${userId}`);
     res.json({ success: true, data: { message: '目标及打卡记录已彻底删除' } });
   } catch (err) {
     console.error('Delete goal error:', err);

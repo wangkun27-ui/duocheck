@@ -58,10 +58,10 @@ const db = {
       }
       const res = await pgPool.query(pgSql, params);
       const lastInsertRowid = res.rows[0] ? res.rows[0].id : null;
-      return { lastInsertRowid };
+      return { lastInsertRowid, rowCount: res.rowCount };
     } else {
       const res = sqliteDb.prepare(sql).run(...params);
-      return { lastInsertRowid: res.lastInsertRowid };
+      return { lastInsertRowid: res.lastInsertRowid, rowCount: res.changes };
     }
   },
 
@@ -85,7 +85,7 @@ const db = {
               pgSql += ' RETURNING id';
             }
             const res = await client.query(pgSql, params);
-            return { lastInsertRowid: res.rows[0] ? res.rows[0].id : null };
+            return { lastInsertRowid: res.rows[0] ? res.rows[0].id : null, rowCount: res.rowCount };
           }
         };
         const result = await fn(tx);
@@ -105,7 +105,7 @@ const db = {
           all: async (sql, params = []) => sqliteDb.prepare(sql).all(...params),
           run: async (sql, params = []) => {
             const res = sqliteDb.prepare(sql).run(...params);
-            return { lastInsertRowid: res.lastInsertRowid };
+            return { lastInsertRowid: res.lastInsertRowid, rowCount: res.changes };
           }
         };
         const result = await fn(tx);
@@ -180,6 +180,47 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_partnership ON messages(partnership_id);
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
+
+    // Apply ON DELETE CASCADE to all foreign keys (idempotent: drop then re-add)
+    // This ensures that deleting a user or goal automatically removes all dependent records
+    const cascadeStatements = [
+      // goals -> cascade when user deleted
+      `ALTER TABLE goals DROP CONSTRAINT IF EXISTS goals_user_id_fkey`,
+      `ALTER TABLE goals ADD CONSTRAINT goals_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`,
+      // checkins -> cascade when goal deleted
+      `ALTER TABLE checkins DROP CONSTRAINT IF EXISTS checkins_goal_id_fkey`,
+      `ALTER TABLE checkins ADD CONSTRAINT checkins_goal_id_fkey FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE`,
+      // checkins -> cascade when user deleted
+      `ALTER TABLE checkins DROP CONSTRAINT IF EXISTS checkins_user_id_fkey`,
+      `ALTER TABLE checkins ADD CONSTRAINT checkins_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`,
+      // checkins verified_by -> set null when user deleted
+      `ALTER TABLE checkins DROP CONSTRAINT IF EXISTS checkins_verified_by_fkey`,
+      `ALTER TABLE checkins ADD CONSTRAINT checkins_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL`,
+      // partnerships -> cascade when user deleted
+      `ALTER TABLE partnerships DROP CONSTRAINT IF EXISTS partnerships_user1_id_fkey`,
+      `ALTER TABLE partnerships ADD CONSTRAINT partnerships_user1_id_fkey FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE`,
+      `ALTER TABLE partnerships DROP CONSTRAINT IF EXISTS partnerships_user2_id_fkey`,
+      `ALTER TABLE partnerships ADD CONSTRAINT partnerships_user2_id_fkey FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE`,
+      // partner_requests -> cascade when user deleted
+      `ALTER TABLE partner_requests DROP CONSTRAINT IF EXISTS partner_requests_from_user_id_fkey`,
+      `ALTER TABLE partner_requests ADD CONSTRAINT partner_requests_from_user_id_fkey FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE`,
+      `ALTER TABLE partner_requests DROP CONSTRAINT IF EXISTS partner_requests_to_user_id_fkey`,
+      `ALTER TABLE partner_requests ADD CONSTRAINT partner_requests_to_user_id_fkey FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE`,
+      // messages -> cascade when partnership deleted or user deleted
+      `ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_partnership_id_fkey`,
+      `ALTER TABLE messages ADD CONSTRAINT messages_partnership_id_fkey FOREIGN KEY (partnership_id) REFERENCES partnerships(id) ON DELETE CASCADE`,
+      `ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_sender_id_fkey`,
+      `ALTER TABLE messages ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE`,
+    ];
+    for (const stmt of cascadeStatements) {
+      try {
+        await pgPool.query(stmt);
+      } catch (e) {
+        // Ignore: constraint may already be in correct state
+        console.warn('[DB] CASCADE migration warning:', e.message);
+      }
+    }
+    console.log('[DB] ON DELETE CASCADE constraints applied.');
   } else {
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (

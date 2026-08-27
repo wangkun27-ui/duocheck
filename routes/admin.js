@@ -138,10 +138,8 @@ router.put('/goals/:id', async (req, res) => {
 // DELETE /api/admin/users/:id - admin delete user completely (cascade clearing all records)
 router.delete('/users/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const adminId = req.user.id;
-
-    const targetUserId = parseInt(id);
+    const targetUserId = parseInt(req.params.id);
+    const adminId = parseInt(req.user.id);
 
     if (targetUserId === adminId) {
       return res.status(400).json({ success: false, error: '管理员不能删除自己' });
@@ -153,32 +151,28 @@ router.delete('/users/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: '该用户不存在' });
     }
 
-    // Transaction cascade delete
-    await db.transaction(async (tx) => {
-      // 1. Delete messages (sent by user or in user's partnerships)
-      await tx.run(`
-        DELETE FROM messages WHERE sender_id = ? 
-        OR partnership_id IN (
-          SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
-        )
-      `, [targetUserId, targetUserId, targetUserId]);
+    // For SQLite: manually delete in correct FK order
+    // For PostgreSQL: ON DELETE CASCADE handles everything automatically, but we still clean manually for safety
+    await db.run('DELETE FROM messages WHERE sender_id = ?', [targetUserId]);
+    await db.run(`
+      DELETE FROM messages WHERE partnership_id IN (
+        SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
+      )
+    `, [targetUserId, targetUserId]);
+    await db.run('DELETE FROM checkins WHERE user_id = ? OR verified_by = ?', [targetUserId, targetUserId]);
+    await db.run('DELETE FROM goals WHERE user_id = ?', [targetUserId]);
+    await db.run('DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?', [targetUserId, targetUserId]);
+    await db.run('DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?', [targetUserId, targetUserId]);
 
-      // 2. Delete checkins (created by user or verified by user)
-      await tx.run('DELETE FROM checkins WHERE user_id = ? OR verified_by = ?', [targetUserId, targetUserId]);
+    // Finally delete the user - CASCADE will clean anything remaining in PostgreSQL
+    const result = await db.run('DELETE FROM users WHERE id = ?', [targetUserId]);
 
-      // 3. Delete goals belonging to the user
-      await tx.run('DELETE FROM goals WHERE user_id = ?', [targetUserId]);
+    if (result.rowCount === 0) {
+      console.error(`[DELETE USER] rowCount=0 after delete, targetUserId=${targetUserId}`);
+      return res.status(500).json({ success: false, error: '删除失败，数据库未执行删除操作' });
+    }
 
-      // 4. Delete partnerships involving the user
-      await tx.run('DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?', [targetUserId, targetUserId]);
-
-      // 5. Delete partner requests involving the user
-      await tx.run('DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?', [targetUserId, targetUserId]);
-
-      // 6. Finally, delete the user record
-      await tx.run('DELETE FROM users WHERE id = ?', [targetUserId]);
-    });
-
+    console.log(`[DELETE USER] Successfully deleted userId=${targetUserId}`);
     res.json({ success: true, data: { message: '用户及其所有相关历史记录已成功清除' } });
   } catch (err) {
     console.error('Admin delete user error:', err);
