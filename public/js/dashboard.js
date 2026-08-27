@@ -9,9 +9,16 @@ window.DashboardPage = {
     const drawUI = (dashData, meData) => {
       const stats = meData.stats || {};
       const streak = dashData.streak || 0;
-      const todayGoals = dashData.today_goals || [];
-      const partnerActivities = dashData.partner_activities || [];
-      const dissolved = dashData.dissolved_partnerships || [];
+      const todayGoals = dashData.goals || [];
+      const partnerActivities = dashData.partnerActivity?.goals?.filter(g => g.checked_in).map(g => ({
+        partner_username: dashData.partnerActivity.partner_username,
+        goal_title: g.goal?.title || '目标',
+        note: g.checkin?.note,
+        verified: g.checkin?.verified_status !== null && g.checkin?.verified_status !== undefined,
+        partner_id: dashData.partnerActivity.partner_id,
+        checkin_id: g.checkin?.id
+      })) || [];
+      const dissolved = dashData.dissolvedPartnerships || [];
       const fireEmojis = streak > 0 ? '🔥'.repeat(Math.min(streak, 10)) : '';
 
       app.innerHTML = `

@@ -18,25 +18,21 @@ router.use(adminMiddleware);
 // GET /api/admin/stats - get system overview stats (online/total users, active partnerships)
 router.get('/stats', async (req, res) => {
   try {
-    const totalUsersResult = await db.get('SELECT COUNT(*) as count FROM users');
-    const totalUsers = parseInt(totalUsersResult.count || 0);
-
-    const activePartnershipsResult = await db.get("SELECT COUNT(*) as count FROM partnerships WHERE status = 'active'");
-    const activePartnerships = parseInt(activePartnershipsResult.count || 0);
-
-    const totalGoalsResult = await db.get('SELECT COUNT(*) as count FROM goals');
-    const totalGoals = parseInt(totalGoalsResult.count || 0);
-
-    const totalCheckinsResult = await db.get('SELECT COUNT(*) as count FROM checkins');
-    const totalCheckins = parseInt(totalCheckinsResult.count || 0);
+    const stats = await db.get(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM partnerships WHERE status = 'active') as active_partnerships,
+        (SELECT COUNT(*) FROM goals) as total_goals,
+        (SELECT COUNT(*) FROM checkins) as total_checkins
+    `);
 
     res.json({
       success: true,
       data: {
-        total_users: totalUsers,
-        active_partnerships: activePartnerships,
-        total_goals: totalGoals,
-        total_checkins: totalCheckins
+        total_users: parseInt(stats.total_users || 0),
+        active_partnerships: parseInt(stats.active_partnerships || 0),
+        total_goals: parseInt(stats.total_goals || 0),
+        total_checkins: parseInt(stats.total_checkins || 0)
       }
     });
   } catch (err) {

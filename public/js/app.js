@@ -305,12 +305,10 @@ window.GoalsPage = {
         </div>
       `;
 
-      // 新增目标按钮处理
-      const addBtn = document.getElementById('btn-add-goal') || document.getElementById('btn-add-goal-empty');
-      if (addBtn) addBtn.addEventListener('click', () => this.showAddGoalModal());
-      // 同时绑定主按钮（当空状态按钮存在时）
-      const mainAddBtn = document.getElementById('btn-add-goal');
-      if (mainAddBtn && mainAddBtn !== addBtn) mainAddBtn.addEventListener('click', () => this.showAddGoalModal());
+      // 新增目标按钮（顶部或空状态下的按钮）
+      document.querySelectorAll('#btn-add-goal, #btn-add-goal-empty').forEach(btn => {
+        btn.addEventListener('click', () => this.showAddGoalModal());
+      });
 
       // 编辑按钮
       document.querySelectorAll('.btn-edit-goal').forEach(btn => {

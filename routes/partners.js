@@ -206,10 +206,10 @@ router.get('/', async (req, res) => {
     const enriched = await Promise.all(partnerships.map(async p => {
       const partnerId = p.partner_id;
 
-      // Calculate partner's streak
+      // Calculate partner's streak (capped at 365 days)
       let streak = 0;
       const checkDate = new Date(today);
-      while (true) {
+      for (let i = 0; i < 365; i++) {
         const dateStr = checkDate.toISOString().split('T')[0];
         const hasCheckin = await db.get(
           'SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND date = ?',
@@ -243,10 +243,9 @@ router.get('/', async (req, res) => {
 
       return {
         ...p,
-        streak: streak, // Match frontend expectation
-        partner_streak: streak,
+        streak,
         partner_goals: goalsWithCheckins,
-        today_checkins: goalsWithCheckins.filter(g => g.today_checked_in).length // Add this helper
+        today_checkins: goalsWithCheckins.filter(g => g.today_checked_in).length
       };
     }));
 
@@ -261,7 +260,7 @@ router.get('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const partnershipId = parseInt(req.params.id);
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
 
     const partnership = await db.get(
       'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?) AND status = ?',

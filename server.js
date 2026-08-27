@@ -38,8 +38,8 @@ const messageRoutes = require('./routes/messages');
 const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth', authRoutes);
-app.use('/api/users', partnerRoutes);
-app.use('/api/partners', partnerRoutes);
+app.use('/api/partners', partnerRoutes);  // Partners: requests, list, dissolve
+app.use('/api/users', partnerRoutes);     // Alias: /api/users/search used by frontend search
 app.use('/api/goals', goalRoutes);
 app.use('/api/checkins', checkinRoutes);
 app.use('/api/messages', messageRoutes);
@@ -52,37 +52,27 @@ cron.schedule('5 0 * * *', async () => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const activePartnerships = await db.all("SELECT * FROM partnerships WHERE status = 'active'");
 
+    // Helper: returns true if the user checked in at least one active goal on a given date
+    const didUserCheckIn = async (tx, userId, date) => {
+      const goals = await tx.all("SELECT id FROM goals WHERE user_id = ? AND status = 'active'", [userId]);
+      for (const goal of goals) {
+        const checkin = await tx.get('SELECT id FROM checkins WHERE goal_id = ? AND date = ?', [goal.id, date]);
+        if (checkin) return true;
+      }
+      return false;
+    };
+
     await db.transaction(async (tx) => {
       let dissolvedCount = 0;
-      for (const partnership of activePartnerships) {
-        const u1 = partnership.user1_id;
-        const u2 = partnership.user2_id;
-        let shouldDissolve = false;
+      for (const { id, user1_id, user2_id } of activePartnerships) {
+        const u1ok = await didUserCheckIn(tx, user1_id, yesterday);
+        const u2ok = await didUserCheckIn(tx, user2_id, yesterday);
 
-        const u1Goals = await tx.all("SELECT id FROM goals WHERE user_id = ? AND status = 'active'", [u1]);
-        if (u1Goals.length > 0) {
-          let u1CheckedIn = false;
-          for (const goal of u1Goals) {
-            const checkin = await tx.get('SELECT id FROM checkins WHERE goal_id = ? AND date = ?', [goal.id, yesterday]);
-            if (checkin) { u1CheckedIn = true; break; }
-          }
-          if (!u1CheckedIn) shouldDissolve = true;
-        }
-
-        if (!shouldDissolve) {
-          const u2Goals = await tx.all("SELECT id FROM goals WHERE user_id = ? AND status = 'active'", [u2]);
-          if (u2Goals.length > 0) {
-            let u2CheckedIn = false;
-            for (const goal of u2Goals) {
-              const checkin = await tx.get('SELECT id FROM checkins WHERE goal_id = ? AND date = ?', [goal.id, yesterday]);
-              if (checkin) { u2CheckedIn = true; break; }
-            }
-            if (!u2CheckedIn) shouldDissolve = true;
-          }
-        }
-
-        if (shouldDissolve) {
-          await tx.run("UPDATE partnerships SET status = 'dissolved', dissolved_reason = 'missed_checkin', dissolved_at = CURRENT_TIMESTAMP WHERE id = ?", [partnership.id]);
+        if (!u1ok || !u2ok) {
+          await tx.run(
+            "UPDATE partnerships SET status = 'dissolved', dissolved_reason = 'missed_checkin', dissolved_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [id]
+          );
           dissolvedCount++;
         }
       }

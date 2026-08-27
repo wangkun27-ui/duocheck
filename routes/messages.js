@@ -7,25 +7,34 @@ const router = express.Router();
 // All routes require auth
 router.use(authMiddleware);
 
-// POST /api/messages/:partnershipId - send message
-router.post('/:partnershipId', async (req, res) => {
+// Shared middleware: verify user belongs to the requested partnership
+async function verifyPartnership(req, res, next) {
   try {
-    const { partnershipId } = req.params;
-    const { content } = req.body;
-    const userId = req.user.id;
-
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({ success: false, error: '消息内容不能为空' });
-    }
-
-    // Verify user is part of partnership
+    const partnershipId = parseInt(req.params.partnershipId);
+    const userId = parseInt(req.user.id);
     const partnership = await db.get(
       'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
       [partnershipId, userId, userId]
     );
-
     if (!partnership) {
       return res.status(403).json({ success: false, error: '你不属于该搭档关系' });
+    }
+    req.partnership = partnership;
+    next();
+  } catch (err) {
+    res.status(500).json({ success: false, error: '验证搭档关系失败' });
+  }
+}
+
+// POST /api/messages/:partnershipId - send message
+router.post('/:partnershipId', verifyPartnership, async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = parseInt(req.user.id);
+    const partnershipId = parseInt(req.params.partnershipId);
+
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ success: false, error: '消息内容不能为空' });
     }
 
     const result = await db.run(
@@ -48,20 +57,9 @@ router.post('/:partnershipId', async (req, res) => {
 });
 
 // GET /api/messages/:partnershipId - get messages for partnership
-router.get('/:partnershipId', async (req, res) => {
+router.get('/:partnershipId', verifyPartnership, async (req, res) => {
   try {
-    const { partnershipId } = req.params;
-    const userId = req.user.id;
-
-    // Verify user is part of partnership
-    const partnership = await db.get(
-      'SELECT * FROM partnerships WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
-      [partnershipId, userId, userId]
-    );
-
-    if (!partnership) {
-      return res.status(403).json({ success: false, error: '你不属于该搭档关系' });
-    }
+    const partnershipId = parseInt(req.params.partnershipId);
 
     const messages = await db.all(`
       SELECT m.*, u.username as sender_username
@@ -79,3 +77,4 @@ router.get('/:partnershipId', async (req, res) => {
 });
 
 module.exports = router;
+

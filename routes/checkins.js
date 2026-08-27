@@ -38,7 +38,7 @@ router.use(authMiddleware);
 router.post('/', upload.array('images', 3), async (req, res) => {
   try {
     const { goal_id, note } = req.body;
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
     const today = new Date().toISOString().split('T')[0];
 
     if (!goal_id) {
@@ -143,7 +143,7 @@ router.get('/', async (req, res) => {
 router.get('/partner/:partnerId/today', async (req, res) => {
   try {
     const partnerId = parseInt(req.params.partnerId);
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
     const today = new Date().toISOString().split('T')[0];
 
     // Verify they are partners
@@ -199,14 +199,15 @@ router.put('/:id/verify', async (req, res) => {
   try {
     const { id } = req.params;
     const { verified_status, verify_comment } = req.body;
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id);
+    const checkinId = parseInt(id);
 
     if (!['confirmed', 'questioned'].includes(verified_status)) {
       return res.status(400).json({ success: false, error: '无效的验证状态' });
     }
 
     // Get the checkin
-    const checkin = await db.get('SELECT * FROM checkins WHERE id = ?', [id]);
+    const checkin = await db.get('SELECT * FROM checkins WHERE id = ?', [checkinId]);
     if (!checkin) {
       return res.status(404).json({ success: false, error: '打卡记录不存在' });
     }
@@ -229,7 +230,7 @@ router.put('/:id/verify', async (req, res) => {
 
     await db.run(
       'UPDATE checkins SET verified_by = ?, verified_status = ?, verify_comment = ? WHERE id = ?',
-      [userId, verified_status, verify_comment || null, id]
+      [userId, verified_status, verify_comment || null, checkinId]
     );
 
     const updated = await db.get(`
@@ -237,7 +238,7 @@ router.put('/:id/verify', async (req, res) => {
       FROM checkins c
       LEFT JOIN users u ON u.id = c.verified_by
       WHERE c.id = ?
-    `, [id]);
+    `, [checkinId]);
 
     res.json({ success: true, data: updated });
   } catch (err) {
@@ -307,7 +308,6 @@ router.get('/dashboard', async (req, res) => {
     `, [userId, userId, userId, userId]);
 
     let partnerActivity = null;
-    const partnerActivities = [];
     if (partnership) {
       const partnerId = partnership.partner_id;
       const partnerGoals = await db.all(
@@ -315,31 +315,15 @@ router.get('/dashboard', async (req, res) => {
         [partnerId, 'active']
       );
 
-      const partnerCheckins = await Promise.all(partnerGoals.map(async g => {
+      const goalsWithCheckins = await Promise.all(partnerGoals.map(async g => {
         const checkin = await db.get(
           'SELECT * FROM checkins WHERE goal_id = ? AND date = ?',
           [g.id, today]
         );
-
-        if (checkin) {
-          partnerActivities.push({
-            partner_id: partnerId,
-            partner_username: partnership.partner_username,
-            goal_id: g.id,
-            goal_title: g.title,
-            verified: checkin.verified_status !== null,
-            note: checkin.note,
-            checkin_id: checkin.id
-          });
-        }
-
         return {
           goal: g,
           checked_in: !!checkin,
-          checkin: checkin ? {
-            ...checkin,
-            images: checkin.images ? JSON.parse(checkin.images) : []
-          } : null
+          checkin: checkin ? { ...checkin, images: checkin.images ? JSON.parse(checkin.images) : [] } : null
         };
       }));
 
@@ -347,7 +331,7 @@ router.get('/dashboard', async (req, res) => {
         partnership_id: partnership.id,
         partner_id: partnerId,
         partner_username: partnership.partner_username,
-        goals: partnerCheckins
+        goals: goalsWithCheckins
       };
     }
 
@@ -379,14 +363,11 @@ router.get('/dashboard', async (req, res) => {
     res.json({
       success: true,
       data: {
-        today: today,
+        today,
         goals: todayGoals,
-        today_goals: todayGoals,
         streak,
         partnerActivity,
-        partner_activities: partnerActivities,
-        dissolvedPartnerships: dissolvedToday,
-        dissolved_partnerships: dissolvedToday
+        dissolvedPartnerships: dissolvedToday
       }
     });
   } catch (err) {

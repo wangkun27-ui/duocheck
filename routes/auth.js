@@ -67,7 +67,7 @@ router.post('/login', async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        error: '请提供用户名 and 密码'
+        error: '请提供用户名和密码'
       });
     }
 
@@ -126,18 +126,14 @@ router.get('/me', authMiddleware, async (req, res) => {
     let streak = 0;
     const today = new Date().toISOString().split('T')[0];
     const checkDate = new Date(today);
-
-    while (true) {
+    // Skip today if not yet checked in (don't break streak)
+    if (!checkinDates.has(today)) checkDate.setDate(checkDate.getDate() - 1);
+    for (let i = 0; i < 365; i++) {
       const dateStr = checkDate.toISOString().split('T')[0];
       if (checkinDates.has(dateStr)) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
-        // Allow streak to continue if they haven't checked in yet today, but did yesterday
-        if (dateStr === today && streak === 0) {
-          checkDate.setDate(checkDate.getDate() - 1);
-          continue;
-        }
         break;
       }
     }
@@ -161,12 +157,9 @@ router.get('/me', authMiddleware, async (req, res) => {
       data: {
         user,
         stats: {
-          totalCheckins,
           total_checkins: totalCheckins,
           streak,
-          activeGoals,
           active_goals: activeGoals,
-          partnerCount,
           partner_count: partnerCount
         }
       }
