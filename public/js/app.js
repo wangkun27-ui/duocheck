@@ -28,18 +28,8 @@ window.App = {
   // Preload all API modules in background
   async preloadAllData() {
     try {
-      console.log('[SPA Preload] Preloading page modules and caching in background...');
-      const [dashData, meData, goalsData, partnersData] = await Promise.all([
-        API.checkins.dashboard().catch(() => null),
-        this.getMeCached().catch(() => null),
-        API.goals.list().catch(() => null),
-        API.partners.list().catch(() => null)
-      ]);
-
-      if (dashData) {
-        window.DashboardPage.cache = dashData;
-      }
-      console.log('[SPA Preload] Cache populated successfully.');
+      console.log('[SPA Preload] Preloading me data...');
+      await this.getMeCached().catch(() => null);
     } catch (e) {
       console.warn('[SPA Preload] Preloading failed in background:', e);
     }

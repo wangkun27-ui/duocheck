@@ -137,29 +137,18 @@ window.DashboardPage = {
       });
     };
 
-    // Stale-While-Revalidate (SWR): 
-    // 1. If we have cached dashboard and me stats, render immediately (0ms wait)
-    if (this.cache && App.cache.me) {
-      drawUI(this.cache, App.cache.me);
-    }
-
-    // 2. Fetch fresh data in the background and patch the DOM silently
+    // Fetch fresh data from API and render UI
     try {
       const [dashData, meData] = await Promise.all([
         API.checkins.dashboard(),
-        App.getMeCached() // Use caching to lower backend load
+        App.getMeCached()
       ]);
       
-      // Save to cache
       this.cache = dashData;
-      
-      // Re-draw UI silently with fresh data without layout flashing
       drawUI(dashData, meData);
     } catch (err) {
-      if (!this.cache) {
-        app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载仪表盘失败</div></div>';
-        App.showToast(err.message, 'error');
-      }
+      app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载仪表盘失败</div></div>';
+      App.showToast(err.message, 'error');
     }
   },
 };
