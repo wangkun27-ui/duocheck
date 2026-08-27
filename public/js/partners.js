@@ -63,11 +63,7 @@ window.PartnersPage = {
       this.bindEvents();
     };
 
-    // Stale-While-Revalidate: Instant render from cache
-    if (this.cache) {
-      drawUI(this.cache.partners, this.cache.pendingRequests);
-    }
-
+    // Fetch fresh data from backend
     try {
       const [partnersData, requestsData] = await Promise.all([
         API.partners.list(),
@@ -77,15 +73,10 @@ window.PartnersPage = {
       const requests = requestsData.requests || [];
       const pendingRequests = requests.filter(r => r.status === 'pending');
 
-      // Update cache
-      this.cache = { partners, pendingRequests };
-      
       drawUI(partners, pendingRequests);
     } catch (err) {
-      if (!this.cache) {
-        app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载搭档列表失败</div></div>';
-        App.showToast(err.message, 'error');
-      }
+      app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载搭档列表失败</div></div>';
+      App.showToast(err.message, 'error');
     }
   },
   

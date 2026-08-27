@@ -330,21 +330,14 @@ window.GoalsPage = {
       });
     };
 
-    // Stale-While-Revalidate: Instant render from cache
-    if (this.cache) {
-      drawUI(this.cache);
-    }
-
+    // Fetch fresh goals from backend
     try {
       const data = await API.goals.list();
       const goals = data.goals || [];
-      this.cache = goals;
       drawUI(goals);
     } catch (err) {
-      if (!this.cache) {
-        app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载失败，请稍后重试</div></div>';
-        App.showToast(err.message, 'error');
-      }
+      app.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-text">加载失败，请稍后重试</div></div>';
+      App.showToast(err.message, 'error');
     }
   },
 

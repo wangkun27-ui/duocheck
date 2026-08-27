@@ -131,6 +131,26 @@ router.put('/goals/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/goals/:id - admin delete a goal and its checkins
+router.delete('/goals/:id', async (req, res) => {
+  try {
+    const goalId = parseInt(req.params.id);
+    await db.transaction(async (tx) => {
+      await tx.run('DELETE FROM checkins WHERE goal_id = ?', [goalId]);
+      const result = await tx.run('DELETE FROM goals WHERE id = ?', [goalId]);
+      if (result.rowCount === 0) {
+        throw new Error('未找到目标或未执行删除');
+      }
+    });
+
+    console.log(`[ADMIN DELETE GOAL SUCCESS] goalId=${goalId}`);
+    res.json({ success: true, data: { message: '目标及打卡记录已成功物理清除' } });
+  } catch (err) {
+    console.error('Admin delete goal error:', err);
+    res.status(500).json({ success: false, error: '删除目标失败：' + err.message });
+  }
+});
+
 // DELETE /api/admin/users/:id - admin delete user completely (cascade clearing all records)
 router.delete('/users/:id', async (req, res) => {
   try {
@@ -147,32 +167,52 @@ router.delete('/users/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: '该用户不存在' });
     }
 
-    // For SQLite: manually delete in correct FK order
-    // For PostgreSQL: ON DELETE CASCADE handles everything automatically, but we still clean manually for safety
-    await db.run('DELETE FROM messages WHERE sender_id = ?', [targetUserId]);
-    await db.run(`
-      DELETE FROM messages WHERE partnership_id IN (
-        SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
-      )
-    `, [targetUserId, targetUserId]);
-    await db.run('DELETE FROM checkins WHERE user_id = ? OR verified_by = ?', [targetUserId, targetUserId]);
-    await db.run('DELETE FROM goals WHERE user_id = ?', [targetUserId]);
-    await db.run('DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?', [targetUserId, targetUserId]);
-    await db.run('DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?', [targetUserId, targetUserId]);
+    // Use atomic transaction to execute cascading deletion in exact dependency order
+    await db.transaction(async (tx) => {
+      // 1. Messages sent by user or in partnerships involving user
+      await tx.run(`
+        DELETE FROM messages WHERE sender_id = ? OR partnership_id IN (
+          SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
+        )
+      `, [targetUserId, targetUserId, targetUserId]);
 
-    // Finally delete the user - CASCADE will clean anything remaining in PostgreSQL
-    const result = await db.run('DELETE FROM users WHERE id = ?', [targetUserId]);
+      // 2. Checkins on goals of user, or created by user, or verified by user
+      await tx.run(`
+        DELETE FROM checkins WHERE user_id = ? OR verified_by = ? OR goal_id IN (
+          SELECT id FROM goals WHERE user_id = ?
+        )
+      `, [targetUserId, targetUserId, targetUserId]);
 
-    if (result.rowCount === 0) {
-      console.error(`[DELETE USER] rowCount=0 after delete, targetUserId=${targetUserId}`);
-      return res.status(500).json({ success: false, error: '删除失败，数据库未执行删除操作' });
-    }
+      // 3. Partner requests sent by or to user
+      await tx.run(`
+        DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?
+      `, [targetUserId, targetUserId]);
 
-    console.log(`[DELETE USER] Successfully deleted userId=${targetUserId}`);
-    res.json({ success: true, data: { message: '用户及其所有相关历史记录已成功清除' } });
+      // 4. Partnerships involving user
+      await tx.run(`
+        DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?
+      `, [targetUserId, targetUserId]);
+
+      // 5. Goals created by user
+      await tx.run(`
+        DELETE FROM goals WHERE user_id = ?
+      `, [targetUserId]);
+
+      // 6. User record
+      const result = await tx.run(`
+        DELETE FROM users WHERE id = ?
+      `, [targetUserId]);
+
+      if (result.rowCount === 0) {
+        throw new Error('数据库未执行用户删除操作');
+      }
+    });
+
+    console.log(`[ADMIN DELETE USER SUCCESS] targetUserId=${targetUserId}`);
+    res.json({ success: true, data: { message: '用户及其所有相关历史记录已彻底成功清除' } });
   } catch (err) {
     console.error('Admin delete user error:', err);
-    res.status(500).json({ success: false, error: '删除用户失败' });
+    res.status(500).json({ success: false, error: '删除用户失败：' + err.message });
   }
 });
 

@@ -15,7 +15,7 @@ window.API = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (!isFormData && data) headers['Content-Type'] = 'application/json';
 
-    const config = { method, headers };
+    const config = { method, headers, cache: 'no-store' };
     if (data) config.body = isFormData ? data : JSON.stringify(data);
 
     try {
@@ -66,6 +66,7 @@ window.API = {
     deleteCheckin: (id) => API.request('DELETE', `/api/admin/checkins/${id}`),
     goals: () => API.request('GET', '/api/admin/goals'),
     updateGoal: (id, data) => API.request('PUT', `/api/admin/goals/${id}`, data),
+    deleteGoal: (id) => API.request('DELETE', `/api/admin/goals/${id}`),
   },
   messages: {
     send: (partnershipId, data) => API.request('POST', `/api/messages/${partnershipId}`, data),

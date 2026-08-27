@@ -126,6 +126,7 @@ window.AdminPage = {
                       <option value="completed" ${g.status === 'completed' ? 'selected' : ''}>已完成</option>
                       <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''}>强制废弃</option>
                     </select>
+                    <button class="btn btn-danger btn-sm btn-delete-admin-goal" data-id="${g.id}" data-title="${g.title}">🗑️ 删除</button>
                   </div>
                 </div>
               `).join('')}
@@ -141,6 +142,27 @@ window.AdminPage = {
   },
 
   bindEvents() {
+    // Delete goal in admin panel
+    document.querySelectorAll('.btn-delete-admin-goal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const title = btn.dataset.title;
+        App.showModal('⚠️ 确认彻底删除目标', `<p>确定要删除目标 「${title}」 吗？相关打卡记录也会一并清除。</p>`, async () => {
+          try {
+            await API.admin.deleteGoal(id);
+            App.showToast('目标已成功删除', 'success');
+            const card = btn.closest('.admin-goal-card');
+            if (card) {
+              card.style.transition = 'all 0.3s ease';
+              card.style.opacity = '0';
+              setTimeout(() => card.remove(), 300);
+            }
+          } catch (err) {
+            App.showToast(err.message, 'error');
+          }
+        });
+      });
+    });
     // Delete checkin click handler
     document.querySelectorAll('.btn-delete-checkin').forEach(btn => {
       btn.addEventListener('click', () => {
