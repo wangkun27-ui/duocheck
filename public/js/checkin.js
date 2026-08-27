@@ -10,12 +10,8 @@ window.CheckinPage = {
     }
     
     try {
-      const goalsData = await API.goals.list();
-      const goals = (goalsData.goals || []).filter(g => g.status === 'active');
-      
-      // Get today's checkins for each goal
-      const today = new Date();
-      const month = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+      const dashData = await API.checkins.dashboard();
+      const goals = dashData.goals || [];
       
       app.innerHTML = `
         <div class="section">
@@ -26,27 +22,70 @@ window.CheckinPage = {
               <div class="empty-text">还没有活跃目标<br>先去设定一个目标吧！</div>
               <button class="btn btn-primary mt-2" onclick="App.navigate('goals')">🎯 设定目标</button>
             </div>
-          ` : goals.map(goal => `
-            <div class="checkin-card glass-card" data-goal-id="${goal.id}">
-              <div class="checkin-header">
-                <h3>🎯 ${goal.title}</h3>
-                ${goal.description ? `<p class="text-secondary">${goal.description}</p>` : ''}
-              </div>
-              <div id="checkin-content-${goal.id}">
-                <div class="image-upload-area" id="upload-area-${goal.id}">
-                  <div class="upload-icon">📸</div>
-                  <div class="upload-text">点击或拖拽上传图片（最多3张）</div>
-                  <input type="file" id="file-input-${goal.id}" accept="image/*" multiple hidden>
+          ` : goals.map(goal => {
+            const checkin = goal.today_checkin;
+            const isConfirmed = checkin && checkin.verified_status === 'confirmed';
+            const isPending = checkin && !checkin.verified_status;
+            const isQuestioned = checkin && checkin.verified_status === 'questioned';
+
+            return `
+              <div class="checkin-card glass-card" data-goal-id="${goal.id}">
+                <div class="checkin-header">
+                  <h3>🎯 ${goal.title}</h3>
+                  ${goal.description ? `<p class="text-secondary">${goal.description}</p>` : ''}
                 </div>
-                <div class="image-preview-grid" id="preview-grid-${goal.id}"></div>
-                <div class="form-group mt-1">
-                  <label>📝 打卡说明</label>
-                  <textarea class="form-input" id="checkin-note-${goal.id}" placeholder="记录今天的完成情况..."></textarea>
-                </div>
-                <button class="btn btn-primary btn-checkin" data-goal-id="${goal.id}">✅ 提交打卡</button>
+
+                ${isConfirmed ? `
+                  <!-- State A: Confirmed by Partner -> Hide Form, Show Success Badge -->
+                  <div class="checkin-proof">
+                    <div class="badge badge-success" style="font-size:0.9rem; padding:0.4rem 0.8rem;">✅ 今日打卡已完成（搭档审核通过）</div>
+                    ${checkin.images && checkin.images.length > 0 ? `
+                      <div class="checkin-images image-preview-grid mt-2">
+                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片"></div>`).join('')}
+                      </div>
+                    ` : ''}
+                    ${checkin.note ? `<div class="checkin-note mt-2">📝 ${checkin.note}</div>` : ''}
+                  </div>
+                ` : isPending ? `
+                  <!-- State B: Submitted, Pending Partner Audit -> Hide Form, Show Pending Badge -->
+                  <div class="checkin-proof">
+                    <div class="badge badge-warning" style="font-size:0.9rem; padding:0.4rem 0.8rem;">⏳ 已提交打卡，等待搭档审核验证中...</div>
+                    ${checkin.images && checkin.images.length > 0 ? `
+                      <div class="checkin-images image-preview-grid mt-2">
+                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片"></div>`).join('')}
+                      </div>
+                    ` : ''}
+                    ${checkin.note ? `<div class="checkin-note mt-2">📝 ${checkin.note}</div>` : ''}
+                  </div>
+                ` : `
+                  <!-- State C & D: Questioned or Not Checked In -> Show Upload Form -->
+                  ${isQuestioned ? `
+                    <div class="checkin-proof mb-2" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.25);">
+                      <div class="badge badge-danger" style="font-size:0.9rem; padding:0.4rem 0.8rem;">❌ 上次打卡被搭档质疑，请重新提交打卡证据</div>
+                      ${checkin.verify_comment ? `<div class="checkin-note mt-1" style="color:var(--warning);font-weight:600;">💬 搭档评语：${checkin.verify_comment}</div>` : ''}
+                      ${checkin.note ? `<div class="checkin-note mt-1" style="opacity:0.8;">先前说明：${checkin.note}</div>` : ''}
+                    </div>
+                  ` : ''}
+                  
+                  <div id="checkin-content-${goal.id}">
+                    <div class="image-upload-area" id="upload-area-${goal.id}">
+                      <div class="upload-icon">📸</div>
+                      <div class="upload-text">${isQuestioned ? '点击或拖拽重新上传证据图片（最多3张）' : '点击或拖拽上传图片（最多3张）'}</div>
+                      <input type="file" id="file-input-${goal.id}" accept="image/*" multiple hidden>
+                    </div>
+                    <div class="image-preview-grid" id="preview-grid-${goal.id}"></div>
+                    <div class="form-group mt-1">
+                      <label>📝 ${isQuestioned ? '重新打卡说明' : '打卡说明'}</label>
+                      <textarea class="form-input" id="checkin-note-${goal.id}" placeholder="${isQuestioned ? '针对搭档的质疑重新补充打卡说明...' : '记录今天的完成情况...'}"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-checkin" data-goal-id="${goal.id}">
+                      ${isQuestioned ? '🔄 重新提交打卡' : '✅ 提交打卡'}
+                    </button>
+                  </div>
+                `}
               </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       `;
       
@@ -156,23 +195,10 @@ window.CheckinPage = {
     images.forEach(img => formData.append('images', img));
     
     try {
-      await API.checkins.create(formData);
-      App.showToast('打卡成功！🎉', 'success');
-      // Replace the checkin form with success state
-      const content = document.getElementById(`checkin-content-${goalId}`);
-      if (content) {
-        content.innerHTML = `
-          <div class="checkin-proof">
-            <div class="badge badge-success">✅ 已打卡</div>
-            ${images.length > 0 ? `
-              <div class="checkin-images image-preview-grid">
-                ${images.map(f => `<div class="image-preview"><img src="${URL.createObjectURL(f)}" alt="打卡图片"></div>`).join('')}
-              </div>
-            ` : ''}
-            ${note ? `<div class="checkin-note">📝 ${note}</div>` : ''}
-          </div>
-        `;
-      }
+      const res = await API.checkins.create(formData);
+      App.showToast(res.message || '打卡提交成功！已处于待审核状态', 'success');
+      this.selectedImages[goalId] = [];
+      await this.render('checkin', { goalId });
     } catch (err) {
       App.showToast(err.message, 'error');
     }

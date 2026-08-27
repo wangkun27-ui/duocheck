@@ -55,18 +55,32 @@ router.post('/', upload.array('images', 3), async (req, res) => {
       return res.status(400).json({ success: false, error: '该目标已不再活跃' });
     }
 
-    // Check only one checkin per goal per day
+    // Check checkin status for today
     const existing = await db.get(
-      'SELECT id FROM checkins WHERE goal_id = ? AND user_id = ? AND date = ?',
+      'SELECT * FROM checkins WHERE goal_id = ? AND user_id = ? AND date = ?',
       [goal_id, userId, today]
     );
-    if (existing) {
-      return res.status(400).json({ success: false, error: '今天已经为该目标打过卡了' });
-    }
 
-    // Process uploaded images
     const images = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
     const imagesJson = images.length > 0 ? JSON.stringify(images) : null;
+
+    if (existing) {
+      if (existing.verified_status === 'confirmed') {
+        return res.status(400).json({ success: false, error: '该目标今日已打卡且通过搭档验证，无需重复打卡' });
+      }
+      if (!existing.verified_status) {
+        return res.status(400).json({ success: false, error: '今日打卡已提交，正在等待搭档审核中' });
+      }
+      if (existing.verified_status === 'questioned') {
+        // Allow re-checkin when questioned: reset verification status to null so partner can re-examine
+        await db.run(
+          'UPDATE checkins SET note = ?, images = ?, verified_by = NULL, verified_status = NULL, verify_comment = NULL, created_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [note || null, imagesJson, existing.id]
+        );
+        const updated = await db.get('SELECT * FROM checkins WHERE id = ?', [existing.id]);
+        return res.status(200).json({ success: true, data: updated, message: '重新提交打卡成功，已重置为待审核状态' });
+      }
+    }
 
     const result = await db.run(
       'INSERT INTO checkins (goal_id, user_id, date, note, images) VALUES (?, ?, ?, ?, ?)',
@@ -232,6 +246,23 @@ router.put('/:id/verify', async (req, res) => {
       'UPDATE checkins SET verified_by = ?, verified_status = ?, verify_comment = ? WHERE id = ?',
       [userId, verified_status, verify_comment || null, checkinId]
     );
+
+    // If questioned, automatically send a system/partner notification message into the chat channel
+    if (verified_status === 'questioned') {
+      try {
+        const goal = await db.get('SELECT title FROM goals WHERE id = ?', [checkin.goal_id]);
+        const goalTitle = goal ? goal.title : '目标';
+        const commentText = verify_comment ? `（评语：${verify_comment}）` : '';
+        const msgContent = `⚠️ 你的搭档对你今日的目标「${goalTitle}」打卡提出了质疑${commentText}。请在打卡界面重新提交证据！`;
+
+        await db.run(
+          'INSERT INTO messages (partnership_id, sender_id, content) VALUES (?, ?, ?)',
+          [partnership.id, userId, msgContent]
+        );
+      } catch (msgErr) {
+        console.warn('Failed to send notification message for questioned checkin:', msgErr.message);
+      }
+    }
 
     const updated = await db.get(`
       SELECT c.*, u.username as verified_by_username
