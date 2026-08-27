@@ -629,6 +629,23 @@ select option:hover {
   box-shadow: 0 8px 32px rgba(16, 185, 129, 0.1);
 }
 
+.clickable-stat {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.clickable-stat:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: var(--primary-light);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.25), 0 0 15px rgba(52, 211, 153, 0.2);
+}
+
+.clickable-stat:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
 .stat-value {
   font-size: 2.5rem;
   font-weight: 700;

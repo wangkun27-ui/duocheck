@@ -44,15 +44,15 @@ window.DashboardPage = {
             <div class="stat-value">${streak}</div>
             <div class="stat-label">🔥 连续打卡</div>
           </div>
-          <div class="stat-card glass-card">
+          <div class="stat-card glass-card clickable-stat" id="stat-total-checkins" title="点击跳转至打卡页面">
             <div class="stat-value">${stats.total_checkins || 0}</div>
             <div class="stat-label">✅ 总打卡</div>
           </div>
-          <div class="stat-card glass-card">
+          <div class="stat-card glass-card clickable-stat" id="stat-active-goals" title="点击跳转至目标页面">
             <div class="stat-value">${stats.active_goals || 0}</div>
             <div class="stat-label">🎯 活跃目标</div>
           </div>
-          <div class="stat-card glass-card">
+          <div class="stat-card glass-card clickable-stat" id="stat-my-partner" title="点击跳转至搭档页面">
             <div class="stat-value" style="font-size: ${dashData.partnerActivity?.partner_username ? '1.5rem' : '1.8rem'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${dashData.partnerActivity?.partner_username || '暂无'}
             </div>
@@ -195,6 +195,11 @@ window.DashboardPage = {
       document.getElementById('qa-add-goal')?.addEventListener('click', () => {
         GoalsPage.showAddGoalModal();
       });
+
+      // Interactive Stat Card Navigation
+      document.getElementById('stat-total-checkins')?.addEventListener('click', () => App.navigate('checkin'));
+      document.getElementById('stat-active-goals')?.addEventListener('click', () => App.navigate('goals'));
+      document.getElementById('stat-my-partner')?.addEventListener('click', () => App.navigate('partners'));
       
       document.querySelectorAll('.btn-quick-checkin').forEach(btn => {
         btn.addEventListener('click', () => {
