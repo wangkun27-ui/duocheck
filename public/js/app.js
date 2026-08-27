@@ -326,7 +326,7 @@ window.GoalsPage = {
       });
       // 彻底删除目标按钮
       document.querySelectorAll('.btn-delete-goal').forEach(btn => {
-        btn.addEventListener('click', () => this.deleteGoal(btn.dataset.id));
+        btn.addEventListener('click', () => this.deleteGoal(btn.dataset.id, btn.dataset.title));
       });
     };
 
@@ -405,16 +405,22 @@ window.GoalsPage = {
     }
   },
 
-  async deleteGoal(id) {
-    try {
-      await API.goals.delete(id);
-      App.showToast('目标已被删除', 'success');
-      this.cache = null;
-      if (window.DashboardPage) window.DashboardPage.cache = null;
-      this.render();
-    } catch (err) {
-      App.showToast(err.message, 'error');
-    }
+  deleteGoal(id, title = '') {
+    App.showModal(
+      '⚠️ 确认彻底删除目标',
+      `<p>确定要彻底删除目标 ${title ? '「<strong>' + title + '</strong>」' : ''} 吗？</p><p class="text-secondary" style="font-size:0.85rem;">删除后相关打卡记录也会一并清除，且无法恢复。</p>`,
+      async () => {
+        try {
+          await API.goals.delete(id);
+          App.showToast('目标已成功删除', 'success');
+          this.cache = null;
+          if (window.DashboardPage) window.DashboardPage.cache = null;
+          await this.render();
+        } catch (err) {
+          App.showToast(err.message, 'error');
+        }
+      }
+    );
   },
 };
 
