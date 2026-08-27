@@ -45,14 +45,11 @@ window.App = {
     }
   },
 
-  showAuth() {
-    document.getElementById('main-nav').classList.add('hidden');
-    AuthPage.render();
-  },
-
   showApp() {
     const nav = document.getElementById('main-nav');
+    const mobileNav = document.getElementById('mobile-nav');
     nav.classList.remove('hidden');
+    if (mobileNav) mobileNav.classList.remove('hidden');
     
     // Render username with admin badge next to it if user is admin
     const userDisplay = document.getElementById('user-display');
@@ -62,28 +59,41 @@ window.App = {
       userDisplay.innerHTML = `👤 ${this.currentUser.username}`;
     }
 
-    // Dynamically add/remove Admin panel link based on role
+    // Dynamically add/remove Admin panel link based on role for both desktop & mobile
     const navLinks = nav.querySelector('.nav-links');
     let adminLink = navLinks.querySelector('a[data-page="admin"]');
+    
+    const mobileNavLinks = mobileNav ? mobileNav.querySelector('.mobile-nav-links') : null;
+    let mobileAdminLink = mobileNavLinks ? mobileNavLinks.querySelector('a[data-page="admin"]') : null;
+
     if (this.currentUser.is_admin) {
       if (!adminLink) {
         const li = document.createElement('li');
         li.innerHTML = '<a data-page="admin">🛡️ 管理后台</a>';
         navLinks.appendChild(li);
-        // Re-setup navigation event listeners
-        this.setupNavigation();
+      }
+      if (mobileNavLinks && !mobileAdminLink) {
+        const li = document.createElement('li');
+        li.innerHTML = '<a data-page="admin"><span class="nav-icon">🛡️</span><span class="nav-label">后台</span></a>';
+        mobileNavLinks.appendChild(li);
       }
     } else {
-      if (adminLink) {
-        adminLink.parentElement.remove();
-      }
+      if (adminLink) adminLink.parentElement.remove();
+      if (mobileAdminLink) mobileAdminLink.parentElement.remove();
     }
+    this.setupNavigation();
+  },
+
+  showAuth() {
+    document.getElementById('main-nav').classList.add('hidden');
+    const mobileNav = document.getElementById('mobile-nav');
+    if (mobileNav) mobileNav.classList.add('hidden');
+    AuthPage.render();
   },
 
   setupNavigation() {
-    // 导航链接点击处理
-    document.querySelectorAll('.nav-links a').forEach(link => {
-      // Avoid duplicate listeners by replacing them
+    // 导航链接点击处理（同时支持 Desktop 和 Mobile Bottom Tab）
+    document.querySelectorAll('.nav-links a, .mobile-nav-links a').forEach(link => {
       const newLink = link.cloneNode(true);
       link.parentNode.replaceChild(newLink, link);
       newLink.addEventListener('click', (e) => {
@@ -94,14 +104,15 @@ window.App = {
     });
     // 退出登录按钮
     const logoutBtn = document.getElementById('btn-logout') || document.getElementById('logout-btn');
-    // Clean listener
-    const newLogoutBtn = logoutBtn.cloneNode(true);
-    logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-    newLogoutBtn.addEventListener('click', () => {
-      API.removeToken();
-      this.currentUser = null;
-      this.showAuth();
-    });
+    if (logoutBtn) {
+      const newLogoutBtn = logoutBtn.cloneNode(true);
+      logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+      newLogoutBtn.addEventListener('click', () => {
+        API.removeToken();
+        this.currentUser = null;
+        this.showAuth();
+      });
+    }
   },
 
   // Cache data to prevent redundant requests on quick navigation
@@ -124,8 +135,8 @@ window.App = {
 
   navigate(page, data = {}) {
     this.currentPage = page;
-    // 更新导航激活状态
-    document.querySelectorAll('.nav-links a').forEach(link => {
+    // 更新导航激活状态（桌面端和手机端同步更新）
+    document.querySelectorAll('.nav-links a, .mobile-nav-links a').forEach(link => {
       link.classList.toggle('active', link.dataset.page === page);
     });
     

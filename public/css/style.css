@@ -1285,27 +1285,17 @@ select.form-input {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .nav-links a {
-    font-size: 0;
-  }
-
-  .nav-links a::before {
-    font-size: 1.1rem;
-  }
-
-  /* Show only emoji portion — using a data attribute approach */
-  .nav-links a {
-    padding: 0.5rem 0.65rem;
-    font-size: 1.15rem;
-    line-height: 1;
-  }
-
   .nav-bar {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.25rem;
+  }
+
+  /* On tablet & mobile, hide desktop text links in header to avoid clutter */
+  .nav-links {
+    display: none;
   }
 
   #app {
-    padding: 1rem;
+    padding: 1rem 1rem 5.5rem 1rem; /* Extra bottom padding for mobile navigation bar */
   }
 
   .partner-card {
@@ -1326,6 +1316,11 @@ select.form-input {
     max-width: 85%;
   }
 
+  .messages-container {
+    height: calc(100vh - 160px);
+    border-radius: var(--radius-md);
+  }
+
   .goal-card {
     flex-direction: column;
     align-items: flex-start;
@@ -1333,36 +1328,145 @@ select.form-input {
   }
 
   .welcome-banner {
-    padding: 1.5rem;
+    padding: 1.25rem;
   }
 
   .auth-container {
-    margin: 5vh auto;
+    margin: 3vh auto;
     padding: 0 1rem;
   }
 
   .image-preview-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .modal-content {
-    width: 95%;
-    padding: 1.5rem;
+    width: 92%;
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
   }
 }
 
-/* ---- Mobile ---- */
+/* ------------------------------------------------------------------
+   Mobile Device Layout Optimization (Auto-applied when screen <= 768px)
+   ------------------------------------------------------------------ */
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Mobile Bottom Navigation Bar */
+  .mobile-nav {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: rgba(13, 15, 35, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--glass-border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  .mobile-nav.hidden {
+    display: none !important;
+  }
+
+  .mobile-nav-links {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    list-style: none;
+    padding: 0.5rem 0.25rem;
+    margin: 0;
+  }
+
+  .mobile-nav-links li {
+    flex: 1;
+    text-align: center;
+  }
+
+  .mobile-nav-links a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.35rem 0;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-nav-links a .nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: transform var(--transition-fast);
+  }
+
+  .mobile-nav-links a:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-nav-links a.active {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .mobile-nav-links a.active .nav-icon {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 2px 8px var(--primary-glow));
+  }
+
+  /* Toast Notifications repositioned to bottom-center for mobile ergonomics */
+  #toast-container {
+    top: auto;
+    bottom: 5rem;
+    left: 1rem;
+    right: 1rem;
+    align-items: center;
+  }
+
+  .toast {
+    min-width: unset;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* ---- Small Mobile Devices (<= 480px) ---- */
 @media (max-width: 480px) {
   .stats-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.8rem;
   }
 
   .quick-actions {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
   }
 
   .quick-actions .btn {
+    min-width: unset;
     width: 100%;
+    padding: 0.65rem 0.5rem;
+    font-size: 0.85rem;
   }
 
   .verify-actions {
@@ -1374,23 +1478,22 @@ select.form-input {
   }
 
   .search-box {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .modal-actions {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .modal-actions .btn {
-    width: 100%;
+    flex: 1;
   }
 
   .nav-user #user-display {
-    display: none;
-  }
-
-  .stat-value {
-    font-size: 2rem;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .calendar-grid {
