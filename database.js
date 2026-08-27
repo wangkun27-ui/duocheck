@@ -318,6 +318,26 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_partnership ON messages(partnership_id);
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
+
+    // Also cleanup SQLite database if running locally
+    try {
+      sqliteDb.exec(`DELETE FROM checkins WHERE goal_id IN (SELECT id FROM goals WHERE LOWER(title) = 'test')`);
+      sqliteDb.exec(`DELETE FROM goals WHERE LOWER(title) = 'test'`);
+      const usersToDelete = ['alexwang1', 'ales'];
+      for (const uname of usersToDelete) {
+        const u = sqliteDb.prepare(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`).get(uname);
+        if (u) {
+          sqliteDb.exec(`DELETE FROM messages WHERE sender_id = ${u.id} OR partnership_id IN (SELECT id FROM partnerships WHERE user1_id = ${u.id} OR user2_id = ${u.id})`);
+          sqliteDb.exec(`DELETE FROM checkins WHERE user_id = ${u.id} OR verified_by = ${u.id}`);
+          sqliteDb.exec(`DELETE FROM goals WHERE user_id = ${u.id}`);
+          sqliteDb.exec(`DELETE FROM partnerships WHERE user1_id = ${u.id} OR user2_id = ${u.id}`);
+          sqliteDb.exec(`DELETE FROM partner_requests WHERE from_user_id = ${u.id} OR to_user_id = ${u.id}`);
+          sqliteDb.exec(`DELETE FROM users WHERE id = ${u.id}`);
+        }
+      }
+    } catch (e) {
+      console.warn('[SQLite Cleanup Error]', e.message);
+    }
   }
 }
 
