@@ -57,7 +57,7 @@ window.AdminPage = {
                       <div class="admin-card-name">${u.username}
                         ${u.is_admin ? '<span class="badge badge-warning" style="margin-left:6px;font-size:0.7em;">管理员</span>' : ''}
                       </div>
-                      <div class="admin-card-meta">ID: ${u.id} · ${parseSafeDate(u.created_at).toLocaleDateString('zh-CN')}</div>
+                      <div class="admin-card-meta">用户ID: ${u.id} · 注册时间: ${parseSafeDate(u.created_at).toLocaleDateString('zh-CN')}</div>
                     </div>
                   </div>
                   <div class="admin-card-actions">
