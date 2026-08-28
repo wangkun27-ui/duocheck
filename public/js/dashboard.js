@@ -102,8 +102,10 @@ window.DashboardPage = {
             ` : partnerFeed.map(item => {
               const parseSafeTime = (dateStr) => {
                 if (!dateStr) return '';
-                const d = new Date(dateStr);
-                return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                let str = dateStr.trim();
+                if (!str.endsWith('Z') && !str.includes('+')) str = str.replace(' ', 'T') + 'Z';
+                const d = new Date(str);
+                return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
               };
 
               if (item.type === 'partner_checkin') {

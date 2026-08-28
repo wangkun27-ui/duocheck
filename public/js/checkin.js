@@ -210,14 +210,18 @@ window.CheckinPage = {
       const data = await API.checkins.partnerToday(partnerId);
       const checkins = data.checkins || [];
       
-      // Safe Date parsing helper to prevent browser-specific exceptions
+      // Safe Date parsing helper - treat DB timestamps as UTC
       const parseSafeDate = (dateStr) => {
         if (!dateStr) return new Date();
-        // Replace dashes with slashes (e.g. '2024-05-01' -> '2024/05/01') because iOS/Safari date parser throws patterns match error on dashes
-        const formatted = dateStr.replace(/-/g, '/').replace('T', ' ').split('.')[0];
-        const d = new Date(formatted);
-        return isNaN(d.getTime()) ? new Date(dateStr) : d;
+        let str = dateStr.trim();
+        if (!str.endsWith('Z') && !str.includes('+')) {
+          str = str.replace(' ', 'T') + 'Z';
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? new Date() : d;
       };
+      // Format time in Beijing timezone
+      const toBeijingTime = (dateStr) => parseSafeDate(dateStr).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' });
       
       app.innerHTML = `
         <div class="section">
@@ -234,7 +238,7 @@ window.CheckinPage = {
             <div class="checkin-card glass-card" data-checkin-id="${checkin.id}">
               <div class="checkin-header">
                 <h3>🎯 ${checkin.goal_title || '目标打卡'}</h3>
-                <span class="text-secondary">${parseSafeDate(checkin.created_at).toLocaleTimeString('zh-CN')}</span>
+                <span class="text-secondary">${toBeijingTime(checkin.created_at)}</span>
               </div>
               <div class="checkin-proof">
                 ${checkin.images && checkin.images.length > 0 ? `
