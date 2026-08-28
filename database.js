@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const path = require('path');
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_xOk9K1mPfijN@ep-flat-credit-b3ae3ssm-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 const isPg = !!databaseUrl;
 
 let sqliteDb = null;
