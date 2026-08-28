@@ -41,7 +41,7 @@ window.CheckinPage = {
                     <div class="badge badge-success" style="font-size:0.9rem; padding:0.4rem 0.8rem;">✅ 今日打卡已完成（搭档审核通过）</div>
                     ${checkin.images && checkin.images.length > 0 ? `
                       <div class="checkin-images image-preview-grid mt-2">
-                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片"></div>`).join('')}
+                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片" class="lightbox-img-trigger" data-src="${img}"></div>`).join('')}
                       </div>
                     ` : ''}
                     ${checkin.note ? `<div class="checkin-note mt-2">📝 ${checkin.note}</div>` : ''}
@@ -52,7 +52,7 @@ window.CheckinPage = {
                     <div class="badge badge-warning" style="font-size:0.9rem; padding:0.4rem 0.8rem;">⏳ 已提交打卡，等待搭档审核验证中...</div>
                     ${checkin.images && checkin.images.length > 0 ? `
                       <div class="checkin-images image-preview-grid mt-2">
-                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片"></div>`).join('')}
+                        ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片" class="lightbox-img-trigger" data-src="${img}"></div>`).join('')}
                       </div>
                     ` : ''}
                     ${checkin.note ? `<div class="checkin-note mt-2">📝 ${checkin.note}</div>` : ''}
@@ -239,7 +239,7 @@ window.CheckinPage = {
               <div class="checkin-proof">
                 ${checkin.images && checkin.images.length > 0 ? `
                   <div class="checkin-images image-preview-grid">
-                    ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片"></div>`).join('')}
+                    ${checkin.images.map(img => `<div class="image-preview"><img src="${img}" alt="打卡图片" class="lightbox-img-trigger" data-src="${img}"></div>`).join('')}
                   </div>
                 ` : ''}
                 ${checkin.note ? `<div class="checkin-note">📝 ${checkin.note}</div>` : ''}

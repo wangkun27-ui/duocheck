@@ -251,7 +251,66 @@ window.App = {
       if (e.target === overlay) close();
     });
   },
+
+  showImageLightbox(src, allSrcs = []) {
+    // Remove any existing lightbox
+    const existing = document.getElementById('lightbox-overlay');
+    if (existing) existing.remove();
+
+    const srcs = allSrcs.length > 0 ? allSrcs : [src];
+    let current = srcs.indexOf(src);
+    if (current === -1) current = 0;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'lightbox-overlay';
+
+    const render = () => {
+      overlay.innerHTML = `
+        <div class="lightbox-backdrop"></div>
+        <div class="lightbox-container">
+          <button class="lightbox-close" id="lb-close">✕</button>
+          ${srcs.length > 1 ? `<button class="lightbox-arrow lightbox-prev" id="lb-prev">‹</button>` : ''}
+          <div class="lightbox-img-wrap">
+            <img src="${srcs[current]}" class="lightbox-img" alt="打卡图片" draggable="false">
+          </div>
+          ${srcs.length > 1 ? `<button class="lightbox-arrow lightbox-next" id="lb-next">›</button>` : ''}
+          ${srcs.length > 1 ? `<div class="lightbox-dots">${srcs.map((_, i) => `<span class="lightbox-dot${i === current ? ' active' : ''}"></span>`).join('')}</div>` : ''}
+        </div>
+      `;
+      overlay.querySelector('#lb-close').onclick = () => overlay.remove();
+      overlay.querySelector('.lightbox-backdrop').onclick = () => overlay.remove();
+      if (srcs.length > 1) {
+        overlay.querySelector('#lb-prev').onclick = (e) => { e.stopPropagation(); current = (current - 1 + srcs.length) % srcs.length; render(); };
+        overlay.querySelector('#lb-next').onclick = (e) => { e.stopPropagation(); current = (current + 1) % srcs.length; render(); };
+      }
+    };
+
+    render();
+    document.body.appendChild(overlay);
+
+    // Keyboard: left/right/escape
+    const onKey = (e) => {
+      if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKey); }
+      if (e.key === 'ArrowLeft' && srcs.length > 1) { current = (current - 1 + srcs.length) % srcs.length; render(); }
+      if (e.key === 'ArrowRight' && srcs.length > 1) { current = (current + 1) % srcs.length; render(); }
+    };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('remove', () => document.removeEventListener('keydown', onKey));
+  },
 };
+
+// Global delegated click handler: open lightbox for any .lightbox-img-trigger
+document.addEventListener('click', (e) => {
+  const img = e.target.closest('.lightbox-img-trigger');
+  if (!img) return;
+  const src = img.dataset.src || img.src;
+  // Collect all sibling images in the same .image-preview-grid
+  const grid = img.closest('.image-preview-grid');
+  const allSrcs = grid
+    ? [...grid.querySelectorAll('.lightbox-img-trigger')].map(i => i.dataset.src || i.src)
+    : [src];
+  App.showImageLightbox(src, allSrcs);
+});
 
 /**
  * 目标管理页面模块
