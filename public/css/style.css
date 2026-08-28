@@ -2144,3 +2144,16 @@ a:hover {
   background: rgba(239, 68, 68, 0.15);
 }
 
+/* Cropper Modal Customization */
+.cropper-view-box,
+.cropper-face {
+  border-radius: 50%;
+}
+.cropper-line, .cropper-point {
+  background-color: var(--primary);
+}
+.cropper-view-box {
+  outline: 2px solid var(--primary);
+  outline-color: rgba(99, 102, 241, 0.8);
+}
+

@@ -51,26 +51,101 @@ window.App = {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = async (e) => {
+    input.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 10 * 1024 * 1024) {
-        App.showToast('头像文件过大，请选择 10MB 独立图片', 'warning');
+      if (file.size > 15 * 1024 * 1024) {
+        App.showToast('头像文件过大，请选择 15MB 以内的图片', 'warning');
         return;
       }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.showCropperModal(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  },
+
+  showCropperModal(imageSrc) {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.innerHTML = `
+      <div class="modal-content glass-card" style="max-width:480px; width:92vw; padding:1.2rem;">
+        <div class="modal-header" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.1rem;">✂️ 裁剪个人头像</h3>
+          <button class="btn btn-ghost btn-sm modal-close">&times;</button>
+        </div>
+        <div class="cropper-container-wrap" style="max-height:360px; overflow:hidden; background:#0a0a1a; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+          <img id="cropper-target-img" src="${imageSrc}" style="max-width:100%; display:block;" alt="裁剪图片">
+        </div>
+        <div class="modal-actions" style="margin-top:1.2rem; display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn btn-ghost modal-close">取消</button>
+          <button class="btn btn-primary" id="btn-confirm-crop">✂️ 确认裁剪并上传</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => {
+      if (cropper) cropper.destroy();
+      overlay.classList.remove('active');
+    };
+
+    overlay.classList.add('active');
+    overlay.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', close));
+
+    const imageElement = document.getElementById('cropper-target-img');
+    let cropper = null;
+
+    if (window.Cropper) {
+      cropper = new Cropper(imageElement, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.85,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false
+      });
+    }
+
+    document.getElementById('btn-confirm-crop')?.addEventListener('click', async () => {
+      const confirmBtn = document.getElementById('btn-confirm-crop');
       try {
-        App.showToast('正在上传头像到云端...', 'info');
-        const url = await API.auth.uploadCloudinaryAvatar(file);
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '⏳ 正在上传...';
+
+        let blob = null;
+        if (cropper) {
+          const canvas = cropper.getCroppedCanvas({
+            width: 400,
+            height: 400,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+          });
+          blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+        }
+
+        if (!blob) throw new Error('图片裁剪失败，请重新选择图片');
+
+        const croppedFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+        const url = await API.auth.uploadCloudinaryAvatar(croppedFile);
         await API.auth.updateAvatar(url);
+
         if (this.currentUser) this.currentUser.avatar = url;
-        App.showToast('头像更换成功！🎉', 'success');
+        App.showToast('头像裁剪并更新成功！🎉', 'success');
+        close();
         this.showApp();
         if (this.currentPage) this.navigate(this.currentPage);
       } catch (err) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '✂️ 确认裁剪并上传';
         App.showToast(err.message || '上传头像失败', 'error');
       }
-    };
-    input.click();
+    });
   },
 
   viewAvatarPrompt() {
