@@ -216,4 +216,47 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/partnerships - list all partnerships with user info
+router.get('/partnerships', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const partnerships = await db.all(`
+      SELECT
+        p.id,
+        p.status,
+        p.created_at,
+        p.dissolved_at,
+        p.dissolved_reason,
+        u1.id   AS user1_id,
+        u1.username AS user1_username,
+        u2.id   AS user2_id,
+        u2.username AS user2_username
+      FROM partnerships p
+      JOIN users u1 ON u1.id = p.user1_id
+      JOIN users u2 ON u2.id = p.user2_id
+      ORDER BY p.status ASC, p.created_at DESC
+      LIMIT 50
+    `, []);
+    res.json({ success: true, data: { partnerships } });
+  } catch (err) {
+    console.error('Admin list partnerships error:', err);
+    res.status(500).json({ success: false, error: '获取搭档关系失败' });
+  }
+});
+
+// DELETE /api/admin/partnerships/:id - dissolve a partnership
+router.delete('/partnerships/:id', async (req, res) => {
+  try {
+    const partnershipId = parseInt(req.params.id);
+    await db.run(
+      "UPDATE partnerships SET status = 'dissolved', dissolved_reason = 'admin_action', dissolved_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [partnershipId]
+    );
+    res.json({ success: true, data: { message: '搭档关系已强制解除' } });
+  } catch (err) {
+    console.error('Admin dissolve partnership error:', err);
+    res.status(500).json({ success: false, error: '解除搭档关系失败' });
+  }
+});
+
 module.exports = router;

@@ -67,6 +67,8 @@ window.API = {
     goals: () => API.request('GET', '/api/admin/goals'),
     updateGoal: (id, data) => API.request('PUT', `/api/admin/goals/${id}`, data),
     deleteGoal: (id) => API.request('DELETE', `/api/admin/goals/${id}`),
+    partnerships: () => API.request('GET', '/api/admin/partnerships'),
+    dissolvePartnership: (id) => API.request('DELETE', `/api/admin/partnerships/${id}`),
   },
   messages: {
     send: (partnershipId, data) => API.request('POST', `/api/messages/${partnershipId}`, data),

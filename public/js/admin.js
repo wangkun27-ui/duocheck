@@ -2,16 +2,18 @@ window.AdminPage = {
   async render() {
     const app = document.getElementById('app');
     try {
-      const [stats, usersData, checkinsData, goalsData] = await Promise.all([
+      const [stats, usersData, checkinsData, goalsData, partnershipsData] = await Promise.all([
         API.admin.stats(),
         API.admin.users(),
         API.admin.checkins(),
-        API.admin.goals()
+        API.admin.goals(),
+        API.admin.partnerships()
       ]);
 
       const users = usersData.users || [];
       const checkins = checkinsData.checkins || [];
       const goals = goalsData.goals || [];
+      const partnerships = partnershipsData.partnerships || [];
 
       const parseSafeDate = (dateStr) => {
         if (!dateStr) return new Date();
@@ -142,6 +144,48 @@ window.AdminPage = {
               `).join('')}
           </div>
         </div>
+
+        <!-- Partnerships -->
+        <div class="section">
+          <h3 class="section-title">🤝 搭档关系 <span class="badge badge-info">${partnerships.length}</span></h3>
+          <div class="admin-card-list">
+            ${partnerships.length === 0 ? `<div class="empty-state"><div class="empty-text">暂无搭档关系</div></div>` :
+              partnerships.map(p => {
+                const isActive = p.status === 'active';
+                const createdStr = toBeijingDateStr(p.created_at);
+                const dissolvedStr = p.dissolved_at ? toBeijingDateStr(p.dissolved_at) : null;
+                return `
+                  <div class="admin-goal-card glass-card" data-partnership-id="${p.id}">
+                    <div class="admin-card-main">
+                      <div class="admin-card-info">
+                        <div class="admin-card-name">
+                          👤 ${p.user1_username}
+                          <span style="color:var(--text-secondary); font-weight:400; margin:0 6px;">🤝</span>
+                          👤 ${p.user2_username}
+                        </div>
+                        <div class="admin-card-meta">
+                          建立时间：${createdStr}
+                          ${dissolvedStr ? ` · 解除时间：${dissolvedStr}` : ''}
+                          ${p.dissolved_reason === 'admin_action' ? ' · <span style="color:var(--danger)">管理员强制解除</span>' : ''}
+                          ${p.dissolved_reason === 'missed_checkin' ? ' · <span style="color:var(--warning)">因漏打卡自动解除</span>' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="admin-card-actions">
+                      <span class="badge ${isActive ? 'badge-success' : 'badge-danger'}" style="margin-right:8px;">
+                        ${isActive ? '✅ 活跃中' : '❌ 已解除'}
+                      </span>
+                      ${isActive ? `
+                        <button class="btn btn-danger btn-sm btn-dissolve-partnership" data-id="${p.id}" data-name="${p.user1_username} & ${p.user2_username}">
+                          🔗 强制解除
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+          </div>
+        </div>
       `;
 
       this.bindEvents();
@@ -238,6 +282,27 @@ window.AdminPage = {
             if (card) {
               card.style.transition = 'all 0.3s ease';
               card.style.background = 'rgba(239, 68, 68, 0.15)';
+              card.style.opacity = '0';
+              setTimeout(() => card.remove(), 300);
+            }
+          } catch (err) {
+            App.showToast(err.message, 'error');
+          }
+        });
+      });
+    });
+    // Dissolve partnership handler
+    document.querySelectorAll('.btn-dissolve-partnership').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        App.showModal('⚠️ 确认强制解除搭档', `<p>确定要强制解除 <strong>${name}</strong> 的搭档关系吗？</p><p class="text-secondary" style="font-size:0.9em;">解除后双方需重新发起邀请才能恢复合作。</p>`, async () => {
+          try {
+            await API.admin.dissolvePartnership(id);
+            App.showToast('搭档关系已强制解除', 'success');
+            const card = document.querySelector(`[data-partnership-id="${id}"]`);
+            if (card) {
+              card.style.transition = 'all 0.3s ease';
               card.style.opacity = '0';
               setTimeout(() => card.remove(), 300);
             }
