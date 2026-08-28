@@ -15,9 +15,19 @@ window.AdminPage = {
 
       const parseSafeDate = (dateStr) => {
         if (!dateStr) return new Date();
-        const formatted = dateStr.replace(/-/g, '/').replace('T', ' ').split('.')[0];
-        const d = new Date(formatted);
-        return isNaN(d.getTime()) ? new Date(dateStr) : d;
+        // Ensure the string is treated as UTC (add 'Z' if no timezone info present)
+        let str = dateStr.trim();
+        if (!str.endsWith('Z') && !str.includes('+')) {
+          str = str.replace(' ', 'T') + 'Z';
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? new Date() : d;
+      };
+
+      // Format a date to Beijing time (UTC+8) date string
+      const toBeijingDateStr = (dateStr) => {
+        const d = parseSafeDate(dateStr);
+        return d.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
       };
 
       app.innerHTML = `
@@ -57,7 +67,7 @@ window.AdminPage = {
                       <div class="admin-card-name">${u.username}
                         ${u.is_admin ? '<span class="badge badge-warning" style="margin-left:6px;font-size:0.7em;">管理员</span>' : ''}
                       </div>
-                      <div class="admin-card-meta">用户ID: ${u.id} · 注册时间: ${parseSafeDate(u.created_at).toLocaleDateString('zh-CN')}</div>
+                      <div class="admin-card-meta">用户ID: ${u.id} · 注册时间: ${toBeijingDateStr(u.created_at)}</div>
                     </div>
                   </div>
                   <div class="admin-card-actions">
@@ -84,7 +94,7 @@ window.AdminPage = {
                       ${c.verified_status === 'confirmed' ? '✅ 已通过' : c.verified_status === 'questioned' ? '❌ 被质疑' : '⏳ 未验证'}
                     </span>
                   </div>
-                  <span class="admin-checkin-date">${parseSafeDate(c.created_at).toLocaleDateString('zh-CN')}</span>
+                  <span class="admin-checkin-date">${toBeijingDateStr(c.created_at)}</span>
                 </div>
                 <div class="admin-checkin-goal">🎯 ${c.goal_title}</div>
                 ${c.note ? `<p class="admin-checkin-note">💬 ${c.note}</p>` : ''}
