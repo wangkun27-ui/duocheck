@@ -72,6 +72,20 @@ window.App = {
       if (mobileAdminLink) mobileAdminLink.parentElement.remove();
     }
     this.setupNavigation();
+    // Async: show/hide review nav based on whether user has an active partner
+    this.updateReviewNavVisibility();
+  },
+
+  async updateReviewNavVisibility() {
+    try {
+      const data = await API.partners.list();
+      const hasPartner = (data.partners || []).some(p => p.status === 'active');
+      const desktopLi = document.getElementById('nav-review-li');
+      const mobileLi  = document.getElementById('mobile-nav-review-li');
+      if (desktopLi) desktopLi.classList.toggle('hidden', !hasPartner);
+      if (mobileLi)  mobileLi.classList.toggle('hidden', !hasPartner);
+      if (hasPartner) this.setupNavigation(); // re-bind new visible link
+    } catch { /* silently ignore */ }
   },
 
   showAuth() {
@@ -182,6 +196,15 @@ window.App = {
           </div>
         `;
         CheckinPage.render(data.mode || 'checkin', data); 
+        break;
+      case 'review':
+        app.innerHTML = `
+          <div class="section">
+            <h2 class="section-title">👀 监督搭档打卡</h2>
+            <div class="glass-card skeleton" style="height: 200px;"></div>
+          </div>
+        `;
+        ReviewPage.render();
         break;
       case 'messages': 
         app.innerHTML = `
