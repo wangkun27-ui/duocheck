@@ -35,19 +35,63 @@ window.App = {
     }
   },
 
+  renderAvatar(user, sizePx = 36) {
+    const username = (typeof user === 'string' ? user : (user?.username || '?')).trim();
+    const avatarUrl = typeof user === 'object' ? user?.avatar : null;
+    const initial = username.charAt(0).toUpperCase();
+
+    if (avatarUrl) {
+      return `<img src="${avatarUrl}" class="user-avatar-img" alt="${username}" style="width:${sizePx}px;height:${sizePx}px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.2);" title="${username}">`;
+    } else {
+      return `<div class="user-avatar-placeholder" style="width:${sizePx}px;height:${sizePx}px;border-radius:50%;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:${Math.round(sizePx * 0.45)}px;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.2);" title="${username}">${initial}</div>`;
+    }
+  },
+
+  changeAvatarPrompt() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) {
+        App.showToast('头像文件过大，请选择 10MB 独立图片', 'warning');
+        return;
+      }
+      try {
+        App.showToast('正在上传头像到云端...', 'info');
+        const url = await API.auth.uploadCloudinaryAvatar(file);
+        await API.auth.updateAvatar(url);
+        if (this.currentUser) this.currentUser.avatar = url;
+        App.showToast('头像更换成功！🎉', 'success');
+        this.showApp();
+        if (this.currentPage) this.navigate(this.currentPage);
+      } catch (err) {
+        App.showToast(err.message || '上传头像失败', 'error');
+      }
+    };
+    input.click();
+  },
+
   showApp() {
     const nav = document.getElementById('main-nav');
     const mobileNav = document.getElementById('mobile-nav');
     nav.classList.remove('hidden');
     if (mobileNav) mobileNav.classList.remove('hidden');
     
-    // Render username with admin badge next to it if user is admin
+    // Render user avatar + username with click-to-change feature
     const userDisplay = document.getElementById('user-display');
-    if (this.currentUser.is_admin) {
-      userDisplay.innerHTML = `👤 ${this.currentUser.username} <span class="badge badge-warning" style="margin-left: 5px; font-size: 0.8em; padding: 2px 6px;">管理员</span>`;
-    } else {
-      userDisplay.innerHTML = `👤 ${this.currentUser.username}`;
-    }
+    const avatarHtml = this.renderAvatar(this.currentUser, 32);
+    userDisplay.innerHTML = `
+      <div id="btn-change-avatar" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:3px 8px;border-radius:20px;transition:background 0.2s;" title="点击更换头像">
+        ${avatarHtml}
+        <span style="font-weight:500;">${this.currentUser.username}</span>
+        ${this.currentUser.is_admin ? '<span class="badge badge-warning" style="font-size: 0.75em; padding: 2px 6px;">管理员</span>' : ''}
+        <span style="font-size:0.8em;opacity:0.6;">📷</span>
+      </div>
+    `;
+
+    document.getElementById('btn-change-avatar')?.addEventListener('click', () => this.changeAvatarPrompt());
 
     // Dynamically add/remove Admin panel link based on role for both desktop & mobile
     const navLinks = nav.querySelector('.nav-links');

@@ -64,7 +64,7 @@ window.AdminPage = {
               users.map(u => `
                 <div class="admin-user-card glass-card" data-user-row-id="${u.id}">
                   <div class="admin-card-main">
-                    <div class="admin-card-avatar">${u.username.charAt(0).toUpperCase()}</div>
+                    ${App.renderAvatar(u, 40)}
                     <div class="admin-card-info">
                       <div class="admin-card-name">${u.username}
                         ${u.is_admin ? '<span class="badge badge-warning" style="margin-left:6px;font-size:0.7em;">管理员</span>' : ''}
@@ -158,10 +158,12 @@ window.AdminPage = {
                   <div class="admin-goal-card glass-card" data-partnership-id="${p.id}">
                     <div class="admin-card-main">
                       <div class="admin-card-info">
-                        <div class="admin-card-name">
-                          👤 ${p.user1_username}
-                          <span style="color:var(--text-secondary); font-weight:400; margin:0 6px;">🤝</span>
-                          👤 ${p.user2_username}
+                        <div class="admin-card-name" style="display:flex;align-items:center;gap:6px;">
+                          ${App.renderAvatar({ username: p.user1_username, avatar: p.user1_avatar }, 28)}
+                          <span>${p.user1_username}</span>
+                          <span style="color:var(--text-secondary); font-weight:400; margin:0 4px;">🤝</span>
+                          ${App.renderAvatar({ username: p.user2_username, avatar: p.user2_avatar }, 28)}
+                          <span>${p.user2_username}</span>
                         </div>
                         <div class="admin-card-meta">
                           建立时间：${createdStr}

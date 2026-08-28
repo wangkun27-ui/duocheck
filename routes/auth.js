@@ -111,7 +111,7 @@ router.get('/me', authMiddleware, async (req, res) => {
   try {
     const userId = parseInt(req.user.id);
 
-    const user = await db.get('SELECT id, username, is_admin, created_at FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT id, username, is_admin, avatar, created_at FROM users WHERE id = ?', [userId]);
     if (!user) {
       return res.status(404).json({ success: false, error: '用户不存在' });
     }
@@ -167,6 +167,24 @@ router.get('/me', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Get me error:', err);
     res.status(500).json({ success: false, error: '获取用户信息失败' });
+  }
+});
+
+// PUT /api/auth/avatar - update user avatar URL
+router.put('/avatar', authMiddleware, async (req, res) => {
+  try {
+    const userId = parseInt(req.user.id);
+    const { avatar } = req.body;
+
+    if (!avatar || typeof avatar !== 'string') {
+      return res.status(400).json({ success: false, error: '请提供有效的头像链接' });
+    }
+
+    await db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatar, userId]);
+    res.json({ success: true, data: { avatar, message: '头像更新成功' } });
+  } catch (err) {
+    console.error('Update avatar error:', err);
+    res.status(500).json({ success: false, error: '更新头像失败' });
   }
 });
 

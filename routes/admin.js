@@ -44,7 +44,7 @@ router.get('/stats', async (req, res) => {
 // GET /api/admin/users - list latest registered users (limit to 30 for speed)
 router.get('/users', async (req, res) => {
   try {
-    const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 30');
+    const users = await db.all('SELECT id, username, avatar, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 30');
     res.json({ success: true, data: { users } });
   } catch (err) {
     console.error('Admin list users error:', err);
@@ -229,8 +229,10 @@ router.get('/partnerships', async (req, res) => {
         p.dissolved_reason,
         u1.id   AS user1_id,
         u1.username AS user1_username,
+        u1.avatar   AS user1_avatar,
         u2.id   AS user2_id,
-        u2.username AS user2_username
+        u2.username AS user2_username,
+        u2.avatar   AS user2_avatar
       FROM partnerships p
       JOIN users u1 ON u1.id = p.user1_id
       JOIN users u2 ON u2.id = p.user2_id

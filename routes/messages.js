@@ -43,7 +43,7 @@ router.post('/:partnershipId', verifyPartnership, async (req, res) => {
     );
 
     const message = await db.get(`
-      SELECT m.*, u.username as sender_username
+      SELECT m.*, u.username as sender_username, u.avatar as sender_avatar
       FROM messages m
       JOIN users u ON u.id = m.sender_id
       WHERE m.id = ?
@@ -62,7 +62,7 @@ router.get('/:partnershipId', verifyPartnership, async (req, res) => {
     const partnershipId = parseInt(req.params.partnershipId);
 
     const messages = await db.all(`
-      SELECT m.*, u.username as sender_username
+      SELECT m.*, u.username as sender_username, u.avatar as sender_avatar
       FROM messages m
       JOIN users u ON u.id = m.sender_id
       WHERE m.partnership_id = ?

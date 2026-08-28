@@ -16,7 +16,7 @@ router.get('/search', async (req, res) => {
     }
 
     const users = await db.all(`
-      SELECT u.id, u.username, u.created_at,
+      SELECT u.id, u.username, u.avatar, u.created_at,
         CASE WHEN EXISTS (
           SELECT 1 FROM partnerships
           WHERE (user1_id = u.id OR user2_id = u.id) AND status = 'active'
@@ -100,7 +100,7 @@ router.post('/request', async (req, res) => {
 router.get('/requests', async (req, res) => {
   try {
     const requests = await db.all(`
-      SELECT pr.*, u.username as from_username
+      SELECT pr.*, u.username as from_username, u.avatar as from_avatar
       FROM partner_requests pr
       JOIN users u ON u.id = pr.from_user_id
       WHERE pr.to_user_id = ? AND pr.status = 'pending'
@@ -195,12 +195,13 @@ router.get('/', async (req, res) => {
     const partnerships = await db.all(`
       SELECT p.*,
         CASE WHEN p.user1_id = ? THEN p.user2_id ELSE p.user1_id END as partner_id,
-        CASE WHEN p.user1_id = ? THEN u2.username ELSE u1.username END as partner_username
+        CASE WHEN p.user1_id = ? THEN u2.username ELSE u1.username END as partner_username,
+        CASE WHEN p.user1_id = ? THEN u2.avatar ELSE u1.avatar END as partner_avatar
       FROM partnerships p
       JOIN users u1 ON u1.id = p.user1_id
       JOIN users u2 ON u2.id = p.user2_id
       WHERE (p.user1_id = ? OR p.user2_id = ?) AND p.status = 'active'
-    `, [userId, userId, userId, userId]);
+    `, [userId, userId, userId, userId, userId]);
 
     // Enrich with partner's streak and today's checkin status for their goals
     const enriched = await Promise.all(partnerships.map(async p => {

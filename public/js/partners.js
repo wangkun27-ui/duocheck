@@ -21,10 +21,13 @@ window.PartnersPage = {
             <h3 class="section-title">📨 待处理的邀请 <span class="badge badge-warning">${pendingRequests.length}</span></h3>
             <div id="pending-requests">
               ${pendingRequests.map(req => `
-                <div class="partner-card glass-card" data-request-id="${req.id}">
-                  <div class="partner-info">
-                    <div class="partner-name">👤 ${req.from_username || req.username}</div>
-                    <div class="partner-streak">想与你成为打卡搭档</div>
+                <div class="partner-card glass-card" data-request-id="${req.id}" style="display:flex;align-items:center;justify-content:space-between;">
+                  <div class="partner-info" style="display:flex;align-items:center;gap:12px;">
+                    ${App.renderAvatar({ username: req.from_username || req.username, avatar: req.from_avatar }, 40)}
+                    <div>
+                      <div class="partner-name" style="font-weight:600;">${req.from_username || req.username}</div>
+                      <div class="partner-streak" style="font-size:0.82rem;opacity:0.7;">想与你成为打卡搭档</div>
+                    </div>
                   </div>
                   <div class="partner-actions">
                     <button class="btn btn-primary btn-sm btn-accept" data-id="${req.id}">✅ 接受</button>
@@ -45,10 +48,13 @@ window.PartnersPage = {
                 <div class="empty-text">还没有搭档？<br>去搜索一个用户，邀请 TA 成为你的搭档吧！</div>
               </div>
             ` : partners.map(p => `
-              <div class="partner-card glass-card">
-                <div class="partner-info">
-                  <div class="partner-name">👤 ${p.partner_username}</div>
-                  <div class="partner-streak">🔥 连续 ${p.streak || 0} 天 · 今日打卡 ${p.today_checkins || 0} 次</div>
+              <div class="partner-card glass-card" style="display:flex;align-items:center;justify-content:space-between;">
+                <div class="partner-info" style="display:flex;align-items:center;gap:12px;">
+                  ${App.renderAvatar({ username: p.partner_username, avatar: p.partner_avatar }, 44)}
+                  <div>
+                    <div class="partner-name" style="font-weight:600;font-size:1.05rem;">${p.partner_username}</div>
+                    <div class="partner-streak" style="font-size:0.82rem;opacity:0.8;margin-top:2px;">🔥 连续 ${p.streak || 0} 天 · 今日打卡 ${p.today_checkins || 0} 次</div>
+                  </div>
                 </div>
                 <div class="partner-actions">
                   <button class="btn btn-primary btn-sm btn-supervise" data-partner-id="${p.partner_id}">👀 监督</button>
@@ -131,8 +137,11 @@ window.PartnersPage = {
         return;
       }
       resultsDiv.innerHTML = users.map(u => `
-        <div class="search-item glass-card">
-          <span>👤 ${u.username}</span>
+        <div class="search-item glass-card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${App.renderAvatar(u, 36)}
+            <span style="font-weight:500;">${u.username}</span>
+          </div>
           <button class="btn btn-primary btn-sm btn-invite" data-user-id="${u.id}">📨 邀请</button>
         </div>
       `).join('');

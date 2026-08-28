@@ -66,7 +66,7 @@ window.ReviewPage = {
                 <!-- 搭档信息头部 -->
                 <div class="flex-between mb-2" style="align-items:center;">
                   <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">👤</div>
+                    ${App.renderAvatar({ username: partner.partner_username, avatar: partner.partner_avatar }, 42)}
                     <div>
                       <div style="font-weight:600;font-size:1rem;">${partner.partner_username}</div>
                       <div class="text-secondary" style="font-size:0.82rem;">今日打卡 ${checkins.length} 条</div>

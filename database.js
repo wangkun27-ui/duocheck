@@ -127,6 +127,7 @@ async function initDatabase() {
         username VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         is_admin INTEGER DEFAULT 0,
+        avatar VARCHAR(500),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS partner_requests (
@@ -222,6 +223,13 @@ async function initDatabase() {
     }
     console.log('[DB] ON DELETE CASCADE constraints applied.');
 
+    // Migration: ensure avatar column exists in users table for PG
+    try {
+      await pgPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(500)");
+    } catch (e) {
+      // Ignore if exists
+    }
+
     // Ensure default admin user exists and has password '12345678'
     try {
       const defaultAdminHash = '$2a$10$L.PabDnAyiHkJsPZ2f1.de8o10V8L/rm/2KWwV8pA83IVBydGa6oa'; // '12345678'
@@ -311,6 +319,12 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_partnership ON messages(partnership_id);
       CREATE INDEX IF NOT EXISTS idx_partner_requests_to ON partner_requests(to_user_id, status);
     `);
+
+    try {
+      sqliteDb.exec("ALTER TABLE users ADD COLUMN avatar TEXT;");
+    } catch (e) {
+      // Column already exists
+    }
 
     // Ensure default admin user exists and has password '12345678' for SQLite
     try {

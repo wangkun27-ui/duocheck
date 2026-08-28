@@ -84,10 +84,14 @@ window.MessagesPage = {
         const isSent = msg.sender_id === App.currentUser.id;
         const msgDate = parseSafeDate(msg.created_at);
         const time = msgDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
+        const avatarHtml = App.renderAvatar({ username: msg.sender_username, avatar: msg.sender_avatar }, 30);
         return `
-          <div class="message-bubble ${isSent ? 'sent' : 'received'}">
-            <div class="message-content">${msg.content}</div>
-            <div class="message-time">${time}</div>
+          <div class="message-row ${isSent ? 'sent' : 'received'}" style="display:flex;gap:8px;margin-bottom:12px;${isSent ? 'flex-direction:row-reverse;' : ''}">
+            ${avatarHtml}
+            <div class="message-bubble ${isSent ? 'sent' : 'received'}">
+              <div class="message-content">${msg.content}</div>
+              <div class="message-time">${time}</div>
+            </div>
           </div>
         `;
       }).join('');

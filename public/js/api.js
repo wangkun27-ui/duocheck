@@ -33,6 +33,22 @@ window.API = {
     register: (data) => API.request('POST', '/api/auth/register', data),
     login: (data) => API.request('POST', '/api/auth/login', data),
     me: () => API.request('GET', '/api/auth/me'),
+    updateAvatar: (avatarUrl) => API.request('PUT', '/api/auth/avatar', { avatar: avatarUrl }),
+    uploadCloudinaryAvatar: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'ml_default');
+      const res = await fetch('https://api.cloudinary.com/v1_1/njm1xunx/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || '头像上传到 Cloudinary 失败');
+      }
+      const data = await res.json();
+      return data.secure_url;
+    }
   },
   users: {
     search: (q) => API.request('GET', `/api/users/search?q=${encodeURIComponent(q)}`),
