@@ -34,6 +34,7 @@ window.API = {
     login: (data) => API.request('POST', '/api/auth/login', data),
     me: () => API.request('GET', '/api/auth/me'),
     updateAvatar: (avatarUrl) => API.request('PUT', '/api/auth/avatar', { avatar: avatarUrl }),
+    deleteAccount: () => API.request('DELETE', '/api/auth/account'),
     uploadCloudinaryAvatar: async (file) => {
       const formData = new FormData();
       formData.append('file', file);

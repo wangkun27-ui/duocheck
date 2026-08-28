@@ -188,4 +188,50 @@ router.put('/avatar', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/account - user self account permanent deletion
+router.delete('/account', authMiddleware, async (req, res) => {
+  try {
+    const targetUserId = parseInt(req.user.id);
+    await db.transaction(async (tx) => {
+      await tx.run(`
+        DELETE FROM messages WHERE sender_id = ? OR partnership_id IN (
+          SELECT id FROM partnerships WHERE user1_id = ? OR user2_id = ?
+        )
+      `, [targetUserId, targetUserId, targetUserId]);
+
+      await tx.run(`
+        DELETE FROM checkins WHERE user_id = ? OR verified_by = ? OR goal_id IN (
+          SELECT id FROM goals WHERE user_id = ?
+        )
+      `, [targetUserId, targetUserId, targetUserId]);
+
+      await tx.run(`
+        DELETE FROM partner_requests WHERE from_user_id = ? OR to_user_id = ?
+      `, [targetUserId, targetUserId]);
+
+      await tx.run(`
+        DELETE FROM partnerships WHERE user1_id = ? OR user2_id = ?
+      `, [targetUserId, targetUserId]);
+
+      await tx.run(`
+        DELETE FROM goals WHERE user_id = ?
+      `, [targetUserId]);
+
+      const result = await tx.run(`
+        DELETE FROM users WHERE id = ?
+      `, [targetUserId]);
+
+      if (result.rowCount === 0) {
+        throw new Error('数据库未执行注销操作');
+      }
+    });
+
+    console.log(`[USER DELETE ACCOUNT SUCCESS] userId=${targetUserId}`);
+    res.json({ success: true, data: { message: '账号及相关历史记录已彻底注销' } });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ success: false, error: '注销账号失败：' + err.message });
+  }
+});
+
 module.exports = router;

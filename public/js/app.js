@@ -73,25 +73,115 @@ window.App = {
     input.click();
   },
 
+  viewAvatarPrompt() {
+    if (this.currentUser?.avatar) {
+      this.showImageLightbox(this.currentUser.avatar);
+    } else {
+      const initial = (this.currentUser?.username || '?').charAt(0).toUpperCase();
+      this.showModal('👤 个人头像预览', `
+        <div style="text-align:center;padding:1rem 0;">
+          <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:2.5rem;margin-bottom:1rem;box-shadow:0 8px 24px rgba(99,102,241,0.3);">${initial}</div>
+          <div style="font-weight:600;font-size:1.1rem;">${this.currentUser?.username}</div>
+          <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px;">默认首字母头像</div>
+        </div>
+      `);
+    }
+  },
+
+  deleteAccountPrompt() {
+    const username = this.currentUser?.username;
+    this.showModal('⚠️ 警告：彻底注销删除账号', `
+      <div style="color:#ef4444; font-weight:600; margin-bottom:8px;">确定要注销并彻底删除账号 「${username}」 吗？</div>
+      <p style="color:#94a3b8; font-size:0.9em; margin-bottom:12px;">注销后，你的账号、设置的打卡目标、提交的所有打卡照片、历史留言以及绑定的搭档关系都将被<strong>物理永久清除</strong>，任何人都无法恢复。</p>
+    `, async () => {
+      try {
+        await API.auth.deleteAccount();
+        App.showToast('账号已永久注销并物理清除！', 'info');
+        API.removeToken();
+        this.currentUser = null;
+        this.showAuth();
+      } catch (err) {
+        App.showToast(err.message, 'error');
+        return false;
+      }
+    });
+  },
+
   showApp() {
     const nav = document.getElementById('main-nav');
     const mobileNav = document.getElementById('mobile-nav');
     nav.classList.remove('hidden');
     if (mobileNav) mobileNav.classList.remove('hidden');
     
-    // Render user avatar + username with click-to-change feature
+    // Render user avatar (click to view) + username + Gear dropdown button
     const userDisplay = document.getElementById('user-display');
-    const avatarHtml = this.renderAvatar(this.currentUser, 32);
+    const avatarHtml = this.renderAvatar(this.currentUser, 34);
     userDisplay.innerHTML = `
-      <div id="btn-change-avatar" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:3px 8px;border-radius:20px;transition:background 0.2s;" title="点击更换头像">
-        ${avatarHtml}
-        <span style="font-weight:500;">${this.currentUser.username}</span>
+      <div class="user-display-container" style="display:inline-flex;align-items:center;gap:10px;position:relative;">
+        <div id="btn-view-avatar" style="cursor:pointer;" title="点击查看头像">
+          ${avatarHtml}
+        </div>
+        <span style="font-weight:500;font-size:0.95rem;">${this.currentUser.username}</span>
         ${this.currentUser.is_admin ? '<span class="badge badge-warning" style="font-size: 0.75em; padding: 2px 6px;">管理员</span>' : ''}
-        <span style="font-size:0.8em;opacity:0.6;">📷</span>
+        
+        <!-- Settings Gear Icon -->
+        <div class="settings-dropdown-wrap" style="position:relative;display:inline-block;">
+          <button id="btn-settings-gear" class="btn-gear" title="账号设置" style="background:transparent;border:none;color:var(--text-secondary);font-size:1.15rem;cursor:pointer;padding:4px 6px;border-radius:50%;transition:transform 0.2s, color 0.2s;">⚙️</button>
+          
+          <!-- Dropdown Menu -->
+          <div id="settings-dropdown-menu" class="settings-menu glass-card hidden">
+            <div class="settings-menu-header" style="padding:8px 12px;font-size:0.8rem;color:var(--text-secondary);border-bottom:1px solid rgba(255,255,255,0.08);">
+              账号设置
+            </div>
+            <button class="settings-menu-item" id="menu-btn-avatar">
+              🖼️ 更换头像
+            </button>
+            <button class="settings-menu-item" id="menu-btn-logout">
+              🚪 退出账号
+            </button>
+            <div style="height:1px;background:rgba(255,255,255,0.08);margin:4px 0;"></div>
+            <button class="settings-menu-item danger" id="menu-btn-delete">
+              ⚠️ 注销账号
+            </button>
+          </div>
+        </div>
       </div>
     `;
 
-    document.getElementById('btn-change-avatar')?.addEventListener('click', () => this.changeAvatarPrompt());
+    // Click avatar -> view full image
+    document.getElementById('btn-view-avatar')?.addEventListener('click', () => this.viewAvatarPrompt());
+
+    // Gear button -> toggle dropdown menu
+    const gearBtn = document.getElementById('btn-settings-gear');
+    const menu = document.getElementById('settings-dropdown-menu');
+    
+    if (gearBtn && menu) {
+      gearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && e.target !== gearBtn) {
+          menu.classList.add('hidden');
+        }
+      });
+    }
+
+    // Dropdown items listeners
+    document.getElementById('menu-btn-avatar')?.addEventListener('click', () => {
+      menu.classList.add('hidden');
+      this.changeAvatarPrompt();
+    });
+    document.getElementById('menu-btn-logout')?.addEventListener('click', () => {
+      menu.classList.add('hidden');
+      API.removeToken();
+      this.currentUser = null;
+      this.showAuth();
+    });
+    document.getElementById('menu-btn-delete')?.addEventListener('click', () => {
+      menu.classList.add('hidden');
+      this.deleteAccountPrompt();
+    });
 
     // Dynamically add/remove Admin panel link based on role for both desktop & mobile
     const navLinks = nav.querySelector('.nav-links');

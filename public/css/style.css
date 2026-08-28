@@ -2086,3 +2086,61 @@ a:hover {
   opacity: 0.92;
 }
 
+/* ============================================================
+   Settings Gear Dropdown Menu
+   ============================================================ */
+.btn-gear:hover {
+  transform: rotate(45deg);
+  color: var(--text-primary) !important;
+}
+
+.settings-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 170px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: settings-fade-in 0.18s ease;
+}
+
+@keyframes settings-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-menu-item.danger {
+  color: #ef4444;
+}
+
+.settings-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
